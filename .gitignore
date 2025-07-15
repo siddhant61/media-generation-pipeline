@@ -274,3 +274,6 @@ coverage/
 # Custom output directories
 custom_output/
 experiments/ 
+# Large notebook files
+vid_gen*.ipynb
+*.ipynb
