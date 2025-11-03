@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Redis service for job storage
+  redis:
+    image: redis:alpine
+    container_name: media-pipeline-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - media-pipeline-network
+
+  # API service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: media-pipeline-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Required API keys (must be set in .env file or passed at runtime)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - STABILITY_API_KEY=${STABILITY_API_KEY}
+      
+      # Redis connection (use service name as hostname)
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Optional: API key for endpoint protection
+      - API_KEY=${API_KEY:-}
+      
+      # Optional: LLM Configuration
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      
+      # Optional: TTS Configuration
+      - TTS_MODEL=${TTS_MODEL:-tts-1}
+      - TTS_VOICE=${TTS_VOICE:-alloy}
+      
+      # Optional: Video Configuration
+      - VIDEO_FPS=${VIDEO_FPS:-24}
+      - BACKGROUND_MUSIC_FILE=${BACKGROUND_MUSIC_FILE:-}
+      
+      # Optional: Output directory
+      - OUTPUT_DIR=${OUTPUT_DIR:-generated_content}
+    volumes:
+      # Persist generated content
+      - ./generated_content:/app/generated_content
+      
+      # Optional: Mount background music if provided
+      - ${BACKGROUND_MUSIC_FILE:-/dev/null}:/app/background_music.mp3:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - media-pipeline-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  media-pipeline-network:
+    driver: bridge
