@@ -115,12 +115,24 @@ function loadApiKeys() {
 
 /**
  * Save API keys to localStorage
+ * 
+ * SECURITY NOTE: API keys are stored in browser's localStorage for convenience.
+ * This is appropriate for a local/personal UI where:
+ * - The user is accessing their own machine
+ * - Keys are never sent to external servers except the configured API endpoints
+ * - Alternative would require users to re-enter keys on every page load
+ * 
+ * For production deployments, consider:
+ * - Server-side API key management
+ * - Encrypted storage
+ * - Session-based authentication
  */
 function saveApiKeys() {
     const openaiKey = elements.openaiKeyInput.value.trim();
     const stabilityKey = elements.stabilityKeyInput.value.trim();
     const mediaApiKey = elements.mediaApiKeyInput.value.trim();
     
+    // Store keys in localStorage (browser local storage, not sent to server)
     if (openaiKey) {
         localStorage.setItem(LOCAL_STORAGE_KEYS.OPENAI_KEY, openaiKey);
     }

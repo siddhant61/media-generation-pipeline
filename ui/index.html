@@ -123,7 +123,8 @@
             <div class="modal-body">
                 <p class="modal-info">
                     Configure your API keys to use the video generation service. 
-                    Keys are stored locally in your browser and never sent to our servers.
+                    Keys are stored locally in your browser's localStorage and are only sent to the configured API endpoints (OpenAI, Stability AI, and this server). 
+                    <strong>Note:</strong> For production use, consider server-side key management.
                 </p>
 
                 <div class="form-group">
