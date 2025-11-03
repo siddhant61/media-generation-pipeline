@@ -58,6 +58,8 @@ class ContentGenerator:
         )
         
         try:
+            from openai import RateLimitError, APIError, APIConnectionError
+            
             response = self.openai_client.chat.completions.create(
                 model=self.config.llm_config.scene_generation_model,
                 messages=[
@@ -93,6 +95,14 @@ class ContentGenerator:
             print(f'Generated structured output for {len(scenes_data)} scenes')
             return scenes_data[:num_scenes]
             
+        except RateLimitError as e:
+            print(f'OpenAI Rate Limit Error: {e}')
+            print('Please wait and try again, or check your API quota.')
+            raise
+        except (APIError, APIConnectionError) as e:
+            print(f'OpenAI API Error: {e}')
+            print('There was a problem connecting to OpenAI. Please check your connection and try again.')
+            raise
         except json.JSONDecodeError as e:
             print(f'Error parsing JSON from LLM response: {e}')
             print(f'Response content: {content}')
@@ -116,6 +126,8 @@ class ContentGenerator:
         output_path = os.path.join(self.config.tts_config.audio_output_dir, output_filename)
         
         try:
+            from openai import RateLimitError, APIError, APIConnectionError
+            
             print(f'Generating audio for {scene_id}')
             
             response = self.openai_client.audio.speech.create(
@@ -130,6 +142,12 @@ class ContentGenerator:
             print(f'Audio saved as {output_path}')
             return output_path
             
+        except RateLimitError as e:
+            print(f'OpenAI Rate Limit Error generating audio for {scene_id}: {e}')
+            return ""
+        except (APIError, APIConnectionError) as e:
+            print(f'OpenAI API Error generating audio for {scene_id}: {e}')
+            return ""
         except Exception as e:
             print(f'Error generating audio for {scene_id}: {e}')
             return ""
@@ -155,6 +173,8 @@ class ContentGenerator:
         """
         
         try:
+            from openai import RateLimitError, APIError, APIConnectionError
+            
             response = self.openai_client.chat.completions.create(
                 model=self.config.openai_model,
                 messages=[
@@ -169,6 +189,12 @@ class ContentGenerator:
             print(f'Generated narration for {scene.id}: {scene.name}')
             return narration
             
+        except RateLimitError as e:
+            print(f'OpenAI Rate Limit Error for {scene.id}: {e}')
+            return f"Narration for {scene.name} - rate limit exceeded."
+        except (APIError, APIConnectionError) as e:
+            print(f'OpenAI API Error for {scene.id}: {e}')
+            return f"Narration for {scene.name} - API error occurred."
         except Exception as e:
             print(f'Error generating narration for {scene.id}: {e}')
             return f"Narration for {scene.name} - content not available due to generation error."
@@ -220,6 +246,10 @@ class ContentGenerator:
             print(f'No valid image generated for {scene.id}')
             return ""
             
+        except AttributeError as e:
+            print(f'Stability API configuration error for {scene.id}: {e}')
+            print('Please check your Stability API key and connection.')
+            return ""
         except Exception as e:
             print(f'Error generating image for {scene.id}: {e}')
             return ""

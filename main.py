@@ -13,6 +13,7 @@ from config import config
 from scene_manager import SceneManager
 from content_generator import ContentGenerator
 from image_processor import ImageProcessor
+from video_assembler import VideoAssembler
 
 class MediaGenerationPipeline:
     """Main pipeline class that orchestrates the entire video generation process."""
@@ -26,6 +27,7 @@ class MediaGenerationPipeline:
         self.content_generator = ContentGenerator(self.config)
         self.scene_manager = SceneManager(self.content_generator)
         self.image_processor = ImageProcessor(self.config)
+        self.video_assembler = VideoAssembler(self.config)
         
         print("Media Generation Pipeline initialized successfully!")
         print(f"Output directory: {self.config.output_dir}")
@@ -67,12 +69,14 @@ class MediaGenerationPipeline:
         
         return results
     
-    def create_visualizations(self, results: Dict[str, Any]) -> Dict[str, str]:
+    def create_visualizations(self, results: Dict[str, Any], create_video: bool = True, create_gif: bool = False) -> Dict[str, str]:
         """
-        Create visualizations including storyboards and animations.
+        Create visualizations including video, storyboards, and optional GIF animations.
         
         Args:
             results: Results from content generation
+            create_video: Whether to create MP4 video (default: True)
+            create_gif: Whether to create GIF animation (default: False, legacy feature)
             
         Returns:
             Dictionary containing paths to created visualizations
@@ -85,6 +89,7 @@ class MediaGenerationPipeline:
         captions = []
         
         scenes = self.scene_manager.get_all_scenes()
+        scene_list = list(scenes.values())
         
         for scene_id, scene in scenes.items():
             if scene.image_file and os.path.exists(scene.image_file):
@@ -104,6 +109,16 @@ class MediaGenerationPipeline:
         
         visualization_paths = {}
         
+        # Create video with audio (primary output)
+        if create_video and scene_list:
+            video_path = self.video_assembler.create_video_with_text_overlays(
+                scene_list,
+                self.image_processor,
+                "final_video.mp4",
+                fps=24
+            )
+            visualization_paths['video'] = video_path
+        
         # Create storyboard
         if annotated_images:
             storyboard_path = self.image_processor.create_storyboard(
@@ -113,8 +128,8 @@ class MediaGenerationPipeline:
             )
             visualization_paths['storyboard'] = storyboard_path
         
-        # Create animated GIF
-        if scene_images:
+        # Create animated GIF (optional, legacy feature)
+        if create_gif and scene_images:
             animation_path = self.image_processor.create_animated_gif(
                 scene_images,
                 "complete_animation.gif",
@@ -165,11 +180,14 @@ class MediaGenerationPipeline:
         print(f"Content generated for {len(content_results)} scenes")
         print(f"Output directory: {self.config.output_dir}")
         
+        if visualization_results.get('video'):
+            print(f"✅ Video created: {visualization_results['video']}")
+        
         if visualization_results.get('storyboard'):
             print(f"Storyboard created: {visualization_results['storyboard']}")
         
         if visualization_results.get('animation'):
-            print(f"Animation created: {visualization_results['animation']}")
+            print(f"GIF animation created: {visualization_results['animation']}")
         
         return pipeline_results
     
