@@ -1,0 +1,65 @@
+{
+  "name": "Media Generation Pipeline",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "api",
+  "workspaceFolder": "/app",
+  
+  // Configure VS Code settings
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.formatting.provider": "black",
+        "python.testing.pytestEnabled": true,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true
+        }
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker",
+        "esbenp.prettier-vscode",
+        "humao.rest-client"
+      ]
+    }
+  },
+
+  // Forward ports for API and Redis
+  "forwardPorts": [8000, 6379],
+  
+  // Configure port attributes
+  "portsAttributes": {
+    "8000": {
+      "label": "Media Pipeline API & UI",
+      "onAutoForward": "openBrowser",
+      "protocol": "http"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
+    }
+  },
+
+  // Post-create command to set up the environment
+  "postCreateCommand": "echo '🎬 Media Generation Pipeline is ready!' && echo 'Configure your API keys in Settings (⚙️ button) to get started.'",
+  
+  // Show a message when the container starts
+  "postStartCommand": "echo '✅ Container started successfully! Access the UI at http://localhost:8000'",
+
+  // Use the non-root 'node' user to run commands
+  "remoteUser": "root",
+  
+  // Environment variables for the dev container
+  "remoteEnv": {
+    "PYTHONUNBUFFERED": "1"
+  },
+
+  // Features to add to the dev container
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  }
+}

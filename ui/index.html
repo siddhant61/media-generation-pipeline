@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Generation Pipeline - AI Video Creator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🎬 Media Generation Pipeline</h1>
+            <p class="subtitle">AI-Powered Video Generation from Any Topic</p>
+            <button id="settingsBtn" class="settings-btn" title="Configure API Keys" aria-label="Open settings to configure API keys">⚙️ Settings</button>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Input Section -->
+            <section class="input-section">
+                <h2>Generate Your Video</h2>
+                <form id="generateForm">
+                    <div class="form-group">
+                        <label for="topic">Topic</label>
+                        <input 
+                            type="text" 
+                            id="topic" 
+                            name="topic" 
+                            placeholder="e.g., The History of Space Exploration"
+                            required
+                            maxlength="200"
+                        >
+                        <small class="help-text">Enter any topic you'd like to create a video about</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="numScenes">Number of Scenes</label>
+                        <div class="slider-container">
+                            <input 
+                                type="range" 
+                                id="numScenes" 
+                                name="numScenes" 
+                                min="1" 
+                                max="20" 
+                                value="8"
+                            >
+                            <span id="numScenesValue" class="slider-value">8</span>
+                        </div>
+                        <small class="help-text">More scenes = longer video (recommended: 5-10)</small>
+                    </div>
+
+                    <button type="submit" id="generateBtn" class="btn btn-primary">
+                        <span class="btn-icon">🎥</span>
+                        Generate Video
+                    </button>
+                </form>
+            </section>
+
+            <!-- Status Section -->
+            <section id="statusSection" class="status-section" style="display: none;">
+                <h2>Generation Status</h2>
+                <div class="status-card">
+                    <div class="status-header">
+                        <span id="statusIcon" class="status-icon">⏳</span>
+                        <span id="statusText" class="status-text">Queued</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <p id="progressMessage" class="progress-message">Initializing...</p>
+                    <small id="jobId" class="job-id"></small>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="results-section" style="display: none;">
+                <h2>Your Video is Ready! 🎉</h2>
+                <div class="video-container">
+                    <video id="resultVideo" controls aria-label="Generated video player">
+                        <source id="videoSource" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div class="action-buttons">
+                    <a id="downloadBtn" href="#" download="generated_video.mp4" class="btn btn-success">
+                        <span class="btn-icon">⬇️</span>
+                        Download Video
+                    </a>
+                    <button id="newVideoBtn" class="btn btn-secondary">
+                        <span class="btn-icon">➕</span>
+                        Create Another Video
+                    </button>
+                </div>
+            </section>
+
+            <!-- Error Section -->
+            <section id="errorSection" class="error-section" style="display: none;">
+                <h2>⚠️ Generation Failed</h2>
+                <div class="error-card">
+                    <p id="errorMessage" class="error-message"></p>
+                    <button id="retryBtn" class="btn btn-primary">
+                        <span class="btn-icon">🔄</span>
+                        Try Again
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>Powered by OpenAI & Stability AI | <a href="/docs" target="_blank">API Documentation</a></p>
+        </footer>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ API Configuration</h2>
+                <button class="close-btn" id="closeModal" aria-label="Close settings modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-info">
+                    Configure your API keys to use the video generation service. 
+                    Keys are stored locally in your browser's localStorage and are only sent to the configured API endpoints (OpenAI, Stability AI, and this server). 
+                    <strong>Note:</strong> For production use, consider server-side key management.
+                </p>
+
+                <div class="form-group">
+                    <label for="openaiKey">OpenAI API Key</label>
+                    <input 
+                        type="password" 
+                        id="openaiKey" 
+                        placeholder="sk-..." 
+                        autocomplete="off"
+                    >
+                    <small class="help-text">
+                        Get your key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="stabilityKey">Stability AI API Key</label>
+                    <input 
+                        type="password" 
+                        id="stabilityKey" 
+                        placeholder="sk-..." 
+                        autocomplete="off"
+                    >
+                    <small class="help-text">
+                        Get your key at <a href="https://platform.stability.ai/account/keys" target="_blank">platform.stability.ai</a>
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="mediaApiKey">Media API Key (Optional)</label>
+                    <input 
+                        type="password" 
+                        id="mediaApiKey" 
+                        placeholder="Optional - only if server requires authentication"
+                        autocomplete="off"
+                    >
+                    <small class="help-text">
+                        Required only if API key authentication is enabled on the server
+                    </small>
+                </div>
+
+                <div class="key-status">
+                    <p id="keyStatus" class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span id="keyStatusText">No keys configured</span>
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="clearKeysBtn" class="btn btn-danger">Clear All Keys</button>
+                <button id="saveKeysBtn" class="btn btn-primary">Save Keys</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -22,6 +22,14 @@ A comprehensive Python pipeline for generating dynamic video content using AI-po
 - **📁 Static File Serving**: Direct access to generated videos via URL
 - **🔄 Background Tasks**: Non-blocking video generation with progress tracking
 
+### Production & Enterprise (Phases 7-9)
+- **🔐 Redis Job Store**: Persistent job tracking with Redis backend
+- **🔑 API Key Security**: Optional API key authentication for endpoint protection
+- **📚 Enhanced OpenAPI Docs**: Comprehensive Swagger documentation with examples
+- **🐳 Docker & Compose**: Multi-stage Dockerfile with Redis orchestration
+- **🌐 Web UI**: Modern, responsive frontend for easy video generation
+- **☁️ GitHub Codespaces**: One-click development environment setup
+
 ### Additional Features
 - **📊 Legacy Support**: Optional GIF animations and storyboards
 - **🏗️ Modular Architecture**: Clean, maintainable code structure
@@ -40,14 +48,28 @@ media_generation_pipeline/
 ├── video_assembler.py     # MP4 video creation with production features
 ├── cli.py                 # Command-line interface (CLI)
 ├── main.py                # FastAPI server for REST API
+├── Dockerfile             # Multi-stage Docker build configuration
+├── docker-compose.yml     # Docker Compose orchestration (API + Redis)
 ├── setup.py               # Standard setuptools configuration
 ├── requirements.txt       # Python dependencies
+├── services/              # Production services
+│   ├── __init__.py
+│   └── job_store.py       # Redis-based job persistence
+├── ui/                    # Web UI for video generation
+│   ├── index.html         # Main HTML interface
+│   ├── style.css          # Modern, responsive styles
+│   └── app.js             # API client and UI logic
+├── .devcontainer/         # GitHub Codespaces configuration
+│   └── devcontainer.json  # Dev container setup
 ├── tests/                 # Test suite with pytest
 │   ├── __init__.py
 │   ├── test_pipeline.py   # Pipeline tests (12 tests)
-│   └── test_api.py        # API endpoint tests (13 tests)
+│   ├── test_api.py        # API endpoint tests (13 tests)
+│   ├── test_api_security.py # Security tests (8 tests)
+│   └── test_job_store.py  # Redis job store tests (14 tests)
 ├── README.md              # This file
 ├── API.md                 # API documentation
+├── DEPLOYMENT.md          # Deployment guide
 └── generated_content/     # Output directory (created automatically)
     ├── audio/             # Generated audio files (MP3)
     ├── transitions/       # Transition frames
@@ -158,6 +180,60 @@ curl -X POST http://localhost:8000/generate \
 ```
 
 See [API.md](API.md) for full API documentation.
+
+### Web UI Mode - Browser Interface
+
+The easiest way to generate videos! Start the server and access the web interface:
+
+```bash
+# Start the server
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+# Open your browser
+# Navigate to: http://localhost:8000
+```
+
+**Features:**
+- 🎨 **Modern, Responsive Interface**: Beautiful gradient design with intuitive controls
+- ⚙️ **Settings Modal**: Configure API keys directly in the browser (stored locally)
+- 📊 **Real-time Progress**: Live status updates with visual progress bar
+- 🎥 **Instant Preview**: Watch your generated video in the browser
+- ⬇️ **Easy Download**: One-click video download
+
+**Screenshots:**
+
+**Main Interface:**
+![UI Main Page](https://github.com/user-attachments/assets/ab8b6da5-fc4b-451f-9268-d8dc329f7886)
+
+**Settings Modal:**
+![Settings Modal](https://github.com/user-attachments/assets/f1e59695-75a7-4f85-b4b4-62b28873436a)
+
+**Quick Start:**
+1. Click the **⚙️ Settings** button
+2. Enter your OpenAI and Stability AI API keys
+3. Click **Save Keys** (stored in browser localStorage)
+4. Enter a topic and select number of scenes
+5. Click **🎥 Generate Video**
+6. Watch the progress in real-time
+7. Download or create another video!
+
+### Docker Mode - Production Deployment
+
+For production deployments with Redis persistence:
+
+```bash
+# Configure API keys in .env file
+cp .env.example .env
+# Edit .env and add your API keys
+
+# Start all services
+docker-compose up -d
+
+# Access the UI
+# Navigate to: http://localhost:8000
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment documentation.
 
 ## 🎬 Two Operating Modes
 

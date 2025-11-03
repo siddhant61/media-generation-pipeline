@@ -55,6 +55,14 @@ class GenerateRequest(BaseModel):
         None, 
         description="Specific scene IDs to process (only applicable with use_static_scenes=true)"
     )
+    openai_api_key: Optional[str] = Field(
+        None,
+        description="Optional OpenAI API key (for UI-provided keys). If not provided, uses server configuration."
+    )
+    stability_api_key: Optional[str] = Field(
+        None,
+        description="Optional Stability AI API key (for UI-provided keys). If not provided, uses server configuration."
+    )
     
     model_config = {
         "json_schema_extra": {
@@ -353,7 +361,8 @@ def update_job_status(job_id: str, status: JobStatus, progress: str = "", error:
         update_job_data(job_id, job_data)
 
 
-async def run_pipeline_job(job_id: str, topic: str, num_scenes: int, use_static_scenes: bool, scene_ids: Optional[list[str]]):
+async def run_pipeline_job(job_id: str, topic: str, num_scenes: int, use_static_scenes: bool, scene_ids: Optional[list[str]], 
+                          openai_api_key: Optional[str] = None, stability_api_key: Optional[str] = None):
     """
     Background task to run the video generation pipeline.
     
@@ -363,11 +372,38 @@ async def run_pipeline_job(job_id: str, topic: str, num_scenes: int, use_static_
         num_scenes: Number of scenes to generate
         use_static_scenes: Whether to use static scenes
         scene_ids: Specific scene IDs to process
+        openai_api_key: Optional OpenAI API key from UI
+        stability_api_key: Optional Stability AI API key from UI
     """
     try:
+        # Initialize pipeline with custom config if API keys are provided
+        pipeline_config = config
+        if openai_api_key or stability_api_key:
+            # Create a custom config with UI-provided keys
+            from config import APIConfig
+            pipeline_config = APIConfig(
+                openai_api_key=openai_api_key or config.openai_api_key,
+                stability_api_key=stability_api_key or config.stability_api_key,
+                api_key=config.api_key,
+                openai_model=config.openai_model,
+                max_tokens=config.max_tokens,
+                temperature=config.temperature,
+                stability_seed=config.stability_seed,
+                stability_steps=config.stability_steps,
+                stability_cfg_scale=config.stability_cfg_scale,
+                stability_width=config.stability_width,
+                stability_height=config.stability_height,
+                stability_samples=config.stability_samples,
+                output_dir=config.output_dir,
+                font_size=config.font_size,
+                llm_config=config.llm_config,
+                tts_config=config.tts_config,
+                video_config=config.video_config
+            )
+        
         # Initialize pipeline
         update_job_status(job_id, JobStatus.GENERATING_SCENES, "Initializing pipeline...")
-        pipeline = MediaGenerationPipeline(config, use_static_scenes=use_static_scenes)
+        pipeline = MediaGenerationPipeline(pipeline_config, use_static_scenes=use_static_scenes)
         
         # Generate scenes if using topic
         if topic and not use_static_scenes:
@@ -487,7 +523,9 @@ async def generate_video(
         request.topic,
         request.num_scenes,
         request.use_static_scenes,
-        request.scene_ids
+        request.scene_ids,
+        request.openai_api_key,
+        request.stability_api_key
     )
     
     return GenerateResponse(
@@ -613,6 +651,15 @@ async def health_check():
 # Create the output directory if it doesn't exist
 os.makedirs(config.output_dir, exist_ok=True)
 app.mount("/outputs", StaticFiles(directory=config.output_dir), name="outputs")
+
+# Mount UI directory for serving the frontend application
+# This should be mounted last to avoid conflicts with API routes
+ui_dir = os.path.join(os.path.dirname(__file__), "ui")
+if os.path.exists(ui_dir):
+    app.mount("/", StaticFiles(directory=ui_dir, html=True), name="ui")
+    print(f"UI mounted at / from {ui_dir}")
+else:
+    print(f"Warning: UI directory not found at {ui_dir}")
 
 
 # Main entry point for running with uvicorn
