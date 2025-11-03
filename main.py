@@ -7,7 +7,7 @@ Provides REST API endpoints for video generation with job tracking.
 import os
 import uuid
 import asyncio
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from datetime import datetime
 from enum import Enum
 
@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from config import config
 from cli import MediaGenerationPipeline
+from services.job_store import JobStoreService
 
 
 # Job status enum
@@ -55,7 +56,10 @@ class JobStatusResponse(BaseModel):
     error: Optional[str] = None
 
 
-# Job storage (in-memory for now, consider Redis for production)
+# Job storage (Redis-based for production, with in-memory fallback)
+job_store: Optional[JobStoreService] = None
+
+# Legacy in-memory storage (used as fallback if Redis unavailable)
 jobs: Dict[str, dict] = {}
 
 
@@ -71,10 +75,24 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     """Validate configuration and create output directory."""
+    global job_store
     try:
         config.validate()
         os.makedirs(config.output_dir, exist_ok=True)
-        print(f"Media Generation Pipeline API started")
+        
+        # Initialize Redis job store
+        try:
+            job_store = JobStoreService()
+            if job_store.ping():
+                print(f"Media Generation Pipeline API started with Redis job store")
+            else:
+                print(f"Warning: Redis connection failed, using in-memory job storage")
+                job_store = None
+        except Exception as redis_error:
+            print(f"Warning: Could not connect to Redis: {redis_error}")
+            print(f"Using in-memory job storage as fallback")
+            job_store = None
+        
         print(f"Output directory: {config.output_dir}")
     except Exception as e:
         print(f"Configuration error: {e}")
@@ -83,15 +101,54 @@ async def startup_event():
         print("  export STABILITY_API_KEY='your-stability-key'")
 
 
+def get_job(job_id: str) -> Optional[dict]:
+    """Get a job from storage (Redis or in-memory)."""
+    if job_store and job_store.ping():
+        return job_store.get_job(job_id)
+    return jobs.get(job_id)
+
+
+def store_job(job_id: str, job_data: dict) -> None:
+    """Store a job in storage (Redis or in-memory)."""
+    if job_store and job_store.ping():
+        job_store.create_job(job_id, job_data)
+    else:
+        jobs[job_id] = job_data
+
+
+def update_job_data(job_id: str, job_data: dict) -> None:
+    """Update a job in storage (Redis or in-memory)."""
+    if job_store and job_store.ping():
+        job_store.update_job(job_id, job_data)
+    else:
+        jobs[job_id] = job_data
+
+
+def list_jobs() -> List[dict]:
+    """List all jobs from storage (Redis or in-memory)."""
+    if job_store and job_store.ping():
+        return job_store.list_all_jobs()
+    return list(jobs.values())
+
+
+def job_exists(job_id: str) -> bool:
+    """Check if a job exists in storage (Redis or in-memory)."""
+    if job_store and job_store.ping():
+        return job_store.exists(job_id)
+    return job_id in jobs
+
+
 def update_job_status(job_id: str, status: JobStatus, progress: str = "", error: str = None):
-    """Update job status in the jobs dictionary."""
-    if job_id in jobs:
-        jobs[job_id]["status"] = status
-        jobs[job_id]["progress"] = progress
+    """Update job status in storage."""
+    job_data = get_job(job_id)
+    if job_data:
+        job_data["status"] = status
+        job_data["progress"] = progress
         if error:
-            jobs[job_id]["error"] = error
+            job_data["error"] = error
         if status == JobStatus.COMPLETE or status == JobStatus.FAILED:
-            jobs[job_id]["completed_at"] = datetime.utcnow().isoformat()
+            job_data["completed_at"] = datetime.utcnow().isoformat()
+        update_job_data(job_id, job_data)
 
 
 async def run_pipeline_job(job_id: str, topic: str, num_scenes: int, use_static_scenes: bool, scene_ids: Optional[list[str]]):
@@ -139,7 +196,10 @@ async def run_pipeline_job(job_id: str, topic: str, num_scenes: int, use_static_
         if video_path:
             video_filename = os.path.basename(video_path)
             video_url = f"/outputs/{video_filename}"
-            jobs[job_id]["video_url"] = video_url
+            job_data = get_job(job_id)
+            if job_data:
+                job_data["video_url"] = video_url
+                update_job_data(job_id, job_data)
             update_job_status(job_id, JobStatus.COMPLETE, "Video generation complete!")
         else:
             update_job_status(job_id, JobStatus.FAILED, error="Failed to create video")
@@ -178,7 +238,7 @@ async def generate_video(request: GenerateRequest, background_tasks: BackgroundT
     job_id = str(uuid.uuid4())
     
     # Initialize job in storage
-    jobs[job_id] = {
+    job_data = {
         "job_id": job_id,
         "status": JobStatus.QUEUED,
         "progress": "Job queued",
@@ -190,6 +250,7 @@ async def generate_video(request: GenerateRequest, background_tasks: BackgroundT
         "num_scenes": request.num_scenes,
         "use_static_scenes": request.use_static_scenes
     }
+    store_job(job_id, job_data)
     
     # Add background task
     background_tasks.add_task(
@@ -219,10 +280,10 @@ async def get_job_status(job_id: str):
     Returns:
         Current job status, progress, and video URL if complete
     """
-    if job_id not in jobs:
+    if not job_exists(job_id):
         raise HTTPException(status_code=404, detail="Job not found")
     
-    job_data = jobs[job_id]
+    job_data = get_job(job_id)
     
     return JobStatusResponse(
         job_id=job_data["job_id"],
@@ -236,14 +297,14 @@ async def get_job_status(job_id: str):
 
 
 @app.get("/jobs")
-async def list_jobs():
+async def list_all_jobs():
     """
     List all jobs.
     
     Returns:
         List of all jobs with their current status
     """
-    return {"jobs": list(jobs.values())}
+    return {"jobs": list_jobs()}
 
 
 @app.get("/health")
