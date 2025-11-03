@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from config import APIConfig, LLMConfig, TTSConfig
 from scene_manager import Scene, SceneManager
 from content_generator import ContentGenerator
-from main import MediaGenerationPipeline
+from cli import MediaGenerationPipeline
 
 
 @pytest.fixture
@@ -169,10 +169,10 @@ class TestContentGenerator:
 class TestMediaGenerationPipeline:
     """Test MediaGenerationPipeline orchestration."""
     
-    @patch('main.VideoAssembler')
-    @patch('main.ImageProcessor')
-    @patch('main.ContentGenerator')
-    @patch('main.SceneManager')
+    @patch('cli.VideoAssembler')
+    @patch('cli.ImageProcessor')
+    @patch('cli.ContentGenerator')
+    @patch('cli.SceneManager')
     def test_pipeline_initialization_static(self, mock_scene_mgr, mock_content_gen, mock_img_proc, mock_video_asm, mock_api_config):
         """Test pipeline initialization with static scenes."""
         with patch('os.makedirs'):
@@ -183,10 +183,10 @@ class TestMediaGenerationPipeline:
             mock_scene_mgr.assert_called_once()
             mock_content_gen.assert_called_once()
     
-    @patch('main.VideoAssembler')
-    @patch('main.ImageProcessor')
-    @patch('main.ContentGenerator')
-    @patch('main.SceneManager')
+    @patch('cli.VideoAssembler')
+    @patch('cli.ImageProcessor')
+    @patch('cli.ContentGenerator')
+    @patch('cli.SceneManager')
     def test_pipeline_initialization_dynamic(self, mock_scene_mgr, mock_content_gen, mock_img_proc, mock_video_asm, mock_api_config):
         """Test pipeline initialization for dynamic scenes."""
         with patch('os.makedirs'):
@@ -194,10 +194,10 @@ class TestMediaGenerationPipeline:
             
             assert pipeline.use_static_scenes is False
     
-    @patch('main.VideoAssembler')
-    @patch('main.ImageProcessor')
-    @patch('main.ContentGenerator')
-    @patch('main.SceneManager')
+    @patch('cli.VideoAssembler')
+    @patch('cli.ImageProcessor')
+    @patch('cli.ContentGenerator')
+    @patch('cli.SceneManager')
     def test_generate_content_with_audio(self, mock_scene_mgr, mock_content_gen, mock_img_proc, mock_video_asm, mock_api_config):
         """Test content generation with audio."""
         # Setup mocks

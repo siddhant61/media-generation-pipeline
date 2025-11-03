@@ -37,12 +37,14 @@ setup(
         "image_processor",
         "video_assembler",
         "main",
+        "cli",
     ],
     install_requires=requirements,
     python_requires=">=3.8",
     entry_points={
         "console_scripts": [
-            "media-pipeline=main:main",
+            "media-pipeline=cli:main",
+            "media-pipeline-api=main:main",
         ],
     },
     classifiers=[
