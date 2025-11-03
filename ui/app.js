@@ -87,6 +87,13 @@ function init() {
         }
     });
     
+    // Close modal with Escape key
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && elements.settingsModal.style.display === 'block') {
+            closeModal();
+        }
+    });
+    
     console.log('Media Generation Pipeline initialized');
 }
 
@@ -133,7 +140,9 @@ function saveApiKeys() {
  * Clear all API keys from localStorage
  */
 function clearApiKeys() {
-    if (confirm('Are you sure you want to clear all API keys?')) {
+    // Simple confirmation - could be enhanced with custom modal for better accessibility
+    const confirmed = confirm('Are you sure you want to clear all API keys? This action cannot be undone.');
+    if (confirmed) {
         localStorage.removeItem(LOCAL_STORAGE_KEYS.OPENAI_KEY);
         localStorage.removeItem(LOCAL_STORAGE_KEYS.STABILITY_KEY);
         localStorage.removeItem(LOCAL_STORAGE_KEYS.MEDIA_API_KEY);
@@ -210,7 +219,8 @@ async function handleGenerate(e) {
     
     // Check if required keys are present
     if (!openaiKey || !stabilityKey) {
-        alert('Please configure your OpenAI and Stability AI API keys in Settings before generating a video.');
+        // Using alert for simplicity - could be enhanced with custom accessible notification
+        alert('⚠️ API Keys Required\n\nPlease configure your OpenAI and Stability AI API keys in Settings before generating a video.\n\nClick OK to open Settings.');
         openModal();
         return;
     }
