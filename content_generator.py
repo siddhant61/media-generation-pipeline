@@ -32,10 +32,107 @@ class ContentGenerator:
             verbose=True
         )
         
-        # Create output directory
+        # Create output directories
         os.makedirs(self.config.output_dir, exist_ok=True)
+        os.makedirs(self.config.tts_config.audio_output_dir, exist_ok=True)
         
         print('Content Generator initialized successfully.')
+    
+    def generate_structured_output(self, topic: str, num_scenes: int = 8) -> list:
+        """
+        Generate structured scene data using LLM.
+        
+        Args:
+            topic: The topic to generate scenes about
+            num_scenes: Number of scenes to generate
+            
+        Returns:
+            List of dictionaries containing scene data (name, prompt, narration)
+        """
+        import json
+        import re
+        
+        prompt = self.config.llm_config.scene_generation_prompt.format(
+            topic=topic,
+            num_scenes=num_scenes
+        )
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model=self.config.llm_config.scene_generation_model,
+                messages=[
+                    {"role": "system", "content": "You are a creative scene generator for video content. Always respond with valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=4000,
+                temperature=0.8
+            )
+            
+            content = response.choices[0].message.content.strip()
+            
+            # Extract JSON from markdown code blocks if present
+            json_match = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(1)
+            
+            scenes_data = json.loads(content)
+            
+            # Validate structure
+            if not isinstance(scenes_data, list):
+                raise ValueError("Response is not a list")
+            
+            # Ensure we have the requested number of scenes
+            if len(scenes_data) < num_scenes:
+                print(f"Warning: Generated only {len(scenes_data)} scenes instead of {num_scenes}")
+            
+            # Validate each scene has required fields
+            for scene in scenes_data:
+                if not all(key in scene for key in ['name', 'prompt', 'narration']):
+                    raise ValueError("Scene missing required fields")
+            
+            print(f'Generated structured output for {len(scenes_data)} scenes')
+            return scenes_data[:num_scenes]
+            
+        except json.JSONDecodeError as e:
+            print(f'Error parsing JSON from LLM response: {e}')
+            print(f'Response content: {content}')
+            raise
+        except Exception as e:
+            print(f'Error generating structured output: {e}')
+            raise
+    
+    def generate_audio(self, narration_text: str, scene_id: str) -> str:
+        """
+        Generate audio narration for a scene using OpenAI TTS.
+        
+        Args:
+            narration_text: The text to convert to speech
+            scene_id: Scene identifier for filename
+            
+        Returns:
+            Path to the generated audio file
+        """
+        output_filename = f"{scene_id.replace(' ', '_')}.mp3"
+        output_path = os.path.join(self.config.tts_config.audio_output_dir, output_filename)
+        
+        try:
+            print(f'Generating audio for {scene_id}')
+            
+            response = self.openai_client.audio.speech.create(
+                model=self.config.tts_config.tts_model,
+                voice=self.config.tts_config.tts_voice,
+                input=narration_text
+            )
+            
+            # Save the audio file
+            response.stream_to_file(output_path)
+            
+            print(f'Audio saved as {output_path}')
+            return output_path
+            
+        except Exception as e:
+            print(f'Error generating audio for {scene_id}: {e}')
+            return ""
     
     def generate_narration(self, scene: Scene) -> str:
         """
