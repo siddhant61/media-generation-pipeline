@@ -11,7 +11,8 @@ from typing import Dict, Optional, List
 from datetime import datetime
 from enum import Enum
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Security, Depends
+from fastapi.security import APIKeyHeader
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -69,6 +70,42 @@ app = FastAPI(
     description="AI-powered video generation from topics using LLM, TTS, and image generation",
     version="2.0.0"
 )
+
+# API Key security
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+async def verify_api_key(api_key: str = Security(api_key_header)) -> str:
+    """
+    Verify API key from request header.
+    
+    Args:
+        api_key: API key from X-API-Key header
+        
+    Returns:
+        The API key if valid
+        
+    Raises:
+        HTTPException: If API key is required but missing or invalid
+    """
+    # If no API key is configured, allow all requests
+    if not config.api_key:
+        return None
+    
+    # If API key is configured, require it
+    if not api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="API key is required. Provide it in the X-API-Key header."
+        )
+    
+    if api_key != config.api_key:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid API key"
+        )
+    
+    return api_key
 
 
 # Validate configuration on startup
@@ -213,16 +250,23 @@ async def run_pipeline_job(job_id: str, topic: str, num_scenes: int, use_static_
 
 
 @app.post("/generate", response_model=GenerateResponse)
-async def generate_video(request: GenerateRequest, background_tasks: BackgroundTasks):
+async def generate_video(
+    request: GenerateRequest, 
+    background_tasks: BackgroundTasks,
+    api_key: str = Security(verify_api_key)
+):
     """
     Generate a video from a topic or using static scenes.
     
     This endpoint queues a video generation job and returns immediately with a job ID.
     Use the /status/{job_id} endpoint to check the job status.
     
+    **Authentication**: Requires API key if configured (X-API-Key header)
+    
     Args:
         request: Generation request parameters
         background_tasks: FastAPI background tasks
+        api_key: API key for authentication (automatically verified)
         
     Returns:
         Job ID and initial status
@@ -297,9 +341,14 @@ async def get_job_status(job_id: str):
 
 
 @app.get("/jobs")
-async def list_all_jobs():
+async def list_all_jobs(api_key: str = Security(verify_api_key)):
     """
     List all jobs.
+    
+    **Authentication**: Requires API key if configured (X-API-Key header)
+    
+    Args:
+        api_key: API key for authentication (automatically verified)
     
     Returns:
         List of all jobs with their current status

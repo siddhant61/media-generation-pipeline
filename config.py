@@ -60,6 +60,7 @@ class APIConfig:
     # API Keys - Should be set via environment variables
     openai_api_key: Optional[str] = None
     stability_api_key: Optional[str] = None
+    api_key: Optional[str] = None  # API key for protecting endpoints
     
     # OpenAI Settings
     openai_model: str = "gpt-4o-mini"
@@ -89,6 +90,8 @@ class APIConfig:
             self.openai_api_key = os.getenv('OPENAI_API_KEY')
         if not self.stability_api_key:
             self.stability_api_key = os.getenv('STABILITY_API_KEY')
+        if not self.api_key:
+            self.api_key = os.getenv('API_KEY')
         
         # Initialize sub-configurations if not provided
         if self.llm_config is None:
