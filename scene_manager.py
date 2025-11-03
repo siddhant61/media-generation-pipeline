@@ -14,11 +14,14 @@ class Scene:
     prompt: str
     narration: str = ""
     image_file: str = ""
+    audio_file: str = ""
     
 class SceneManager:
     """Manages all scenes in the video generation pipeline."""
     
-    def __init__(self):
+    def __init__(self, content_generator=None):
+        """Initialize SceneManager with optional content generator for dynamic scene creation."""
+        self.content_generator = content_generator
         self.scenes = self._initialize_scenes()
     
     def _initialize_scenes(self) -> Dict[str, Scene]:
@@ -80,17 +83,55 @@ class SceneManager:
         """Get all scene IDs."""
         return list(self.scenes.keys())
     
-    def update_scene_results(self, scene_id: str, narration: str = "", image_file: str = ""):
+    def update_scene_results(self, scene_id: str, narration: str = "", image_file: str = "", audio_file: str = ""):
         """Update scene with generated results."""
         if scene_id in self.scenes:
             if narration:
                 self.scenes[scene_id].narration = narration
             if image_file:
                 self.scenes[scene_id].image_file = image_file
+            if audio_file:
+                self.scenes[scene_id].audio_file = audio_file
     
     def get_scene_summary(self) -> str:
         """Get a summary of all scenes."""
         summary = "Scene Summary:\n"
         for scene_id, scene in self.scenes.items():
             summary += f"  {scene_id}: {scene.name}\n"
-        return summary 
+        return summary
+    
+    def generate_scenes(self, topic: str, num_scenes: int = 8) -> Dict[str, Scene]:
+        """
+        Generate scenes dynamically based on a topic using LLM.
+        
+        Args:
+            topic: The topic to generate scenes about
+            num_scenes: Number of scenes to generate
+            
+        Returns:
+            Dictionary of Scene objects keyed by scene ID
+        """
+        if not self.content_generator:
+            raise ValueError("ContentGenerator is required for dynamic scene generation")
+        
+        print(f"Generating {num_scenes} scenes for topic: {topic}")
+        
+        # Generate scenes using the content generator
+        scenes_data = self.content_generator.generate_structured_output(topic, num_scenes)
+        
+        # Convert to Scene objects
+        scenes = {}
+        for idx, scene_data in enumerate(scenes_data, start=1):
+            scene_id = f"Scene {idx}"
+            scenes[scene_id] = Scene(
+                id=scene_id,
+                name=scene_data.get("name", f"Scene {idx}"),
+                prompt=scene_data.get("prompt", ""),
+                narration=scene_data.get("narration", "")
+            )
+        
+        # Replace the current scenes
+        self.scenes = scenes
+        print(f"Successfully generated {len(scenes)} scenes")
+        
+        return scenes 
