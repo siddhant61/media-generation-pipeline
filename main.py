@@ -35,26 +35,129 @@ class JobStatus(str, Enum):
 
 # Request/Response models
 class GenerateRequest(BaseModel):
-    topic: str = Field(..., description="Topic to generate video about")
-    num_scenes: int = Field(8, ge=1, le=20, description="Number of scenes to generate")
-    use_static_scenes: bool = Field(False, description="Use predefined static scenes")
-    scene_ids: Optional[list[str]] = Field(None, description="Specific scene IDs to process (only with static scenes)")
+    """Request model for video generation."""
+    topic: str = Field(
+        ..., 
+        description="Topic to generate video about",
+        examples=["The History of Space Exploration", "Climate Change Solutions", "Ancient Egyptian Civilization"]
+    )
+    num_scenes: int = Field(
+        8, 
+        ge=1, 
+        le=20, 
+        description="Number of scenes to generate (1-20)"
+    )
+    use_static_scenes: bool = Field(
+        False, 
+        description="Use predefined static scenes instead of generating from topic"
+    )
+    scene_ids: Optional[list[str]] = Field(
+        None, 
+        description="Specific scene IDs to process (only applicable with use_static_scenes=true)"
+    )
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "topic": "The Solar System",
+                    "num_scenes": 8
+                },
+                {
+                    "topic": "The Industrial Revolution",
+                    "num_scenes": 5
+                },
+                {
+                    "use_static_scenes": True
+                }
+            ]
+        }
+    }
 
 
 class GenerateResponse(BaseModel):
-    job_id: str
-    status: JobStatus
-    message: str
+    """Response model for video generation request."""
+    job_id: str = Field(
+        ..., 
+        description="Unique identifier for the video generation job"
+    )
+    status: JobStatus = Field(
+        ..., 
+        description="Current status of the job"
+    )
+    message: str = Field(
+        ..., 
+        description="Human-readable message about the job"
+    )
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "job_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "status": "queued",
+                    "message": "Video generation job queued. Use /status/{job_id} to check progress."
+                }
+            ]
+        }
+    }
 
 
 class JobStatusResponse(BaseModel):
-    job_id: str
-    status: JobStatus
-    progress: str
-    created_at: str
-    completed_at: Optional[str] = None
-    video_url: Optional[str] = None
-    error: Optional[str] = None
+    """Response model for job status query."""
+    job_id: str = Field(
+        ..., 
+        description="Unique identifier for the job"
+    )
+    status: JobStatus = Field(
+        ..., 
+        description="Current status of the job"
+    )
+    progress: str = Field(
+        ..., 
+        description="Human-readable progress message"
+    )
+    created_at: str = Field(
+        ..., 
+        description="ISO 8601 timestamp when the job was created"
+    )
+    completed_at: Optional[str] = Field(
+        None, 
+        description="ISO 8601 timestamp when the job completed or failed"
+    )
+    video_url: Optional[str] = Field(
+        None, 
+        description="URL to download the generated video (available when status is 'complete')"
+    )
+    error: Optional[str] = Field(
+        None, 
+        description="Error message if the job failed"
+    )
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "job_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "status": "complete",
+                    "progress": "Video generation complete!",
+                    "created_at": "2024-01-01T12:00:00",
+                    "completed_at": "2024-01-01T12:05:30",
+                    "video_url": "/outputs/final_video.mp4",
+                    "error": None
+                },
+                {
+                    "job_id": "660e8400-e29b-41d4-a716-446655440001",
+                    "status": "generating_content",
+                    "progress": "Generating images and narration...",
+                    "created_at": "2024-01-01T12:00:00",
+                    "completed_at": None,
+                    "video_url": None,
+                    "error": None
+                }
+            ]
+        }
+    }
 
 
 # Job storage (Redis-based for production, with in-memory fallback)
@@ -64,11 +167,59 @@ job_store: Optional[JobStoreService] = None
 jobs: Dict[str, dict] = {}
 
 
-# Initialize FastAPI app
+# Initialize FastAPI app with enhanced OpenAPI documentation
 app = FastAPI(
     title="Media Generation Pipeline API",
-    description="AI-powered video generation from topics using LLM, TTS, and image generation",
-    version="2.0.0"
+    description="""
+    ## AI-Powered Video Generation Pipeline
+    
+    Transform any topic into a complete video narrative with synchronized audio, 
+    automated text overlays, and professional MP4 output.
+    
+    ### Features
+    
+    * **Dynamic Scene Generation**: LLM-powered scene creation from any topic
+    * **Text-to-Speech Audio**: OpenAI TTS integration for professional narration
+    * **AI Image Generation**: Stability AI for stunning visual content
+    * **MP4 Video Assembly**: MoviePy-based video creation with audio synchronization
+    * **Job Tracking**: Real-time status updates for video generation
+    * **Production Features**: Ken Burns effect, background music, subtitles
+    
+    ### Authentication
+    
+    API key authentication can be enabled by setting the `API_KEY` environment variable.
+    When enabled, protected endpoints require the `X-API-Key` header.
+    
+    ### Workflow
+    
+    1. Submit a video generation job via `/generate`
+    2. Receive a job ID in the response
+    3. Poll `/status/{job_id}` to check progress
+    4. Download the completed video from the URL in the status response
+    """,
+    version="2.0.0",
+    contact={
+        "name": "Media Generation Pipeline",
+        "url": "https://github.com/siddhant61/media-generation-pipeline",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    openapi_tags=[
+        {
+            "name": "jobs",
+            "description": "Operations for managing video generation jobs. **Protected by API key** if configured.",
+        },
+        {
+            "name": "status",
+            "description": "Check the status and progress of video generation jobs. **Public endpoint**.",
+        },
+        {
+            "name": "health",
+            "description": "Health check and monitoring. **Public endpoint**.",
+        },
+    ]
 )
 
 # API Key security
@@ -249,27 +400,46 @@ async def run_pipeline_job(job_id: str, topic: str, num_scenes: int, use_static_
         update_job_status(job_id, JobStatus.FAILED, error=error_msg)
 
 
-@app.post("/generate", response_model=GenerateResponse)
+@app.post(
+    "/generate", 
+    response_model=GenerateResponse,
+    tags=["jobs"],
+    summary="Generate a video from a topic",
+    response_description="Job created successfully with unique job ID"
+)
 async def generate_video(
     request: GenerateRequest, 
     background_tasks: BackgroundTasks,
     api_key: str = Security(verify_api_key)
 ):
     """
-    Generate a video from a topic or using static scenes.
+    ## Generate a Video from a Topic
     
-    This endpoint queues a video generation job and returns immediately with a job ID.
-    Use the /status/{job_id} endpoint to check the job status.
+    Submit a video generation job that creates a complete video with:
+    - AI-generated scenes based on your topic
+    - Professional narration using text-to-speech
+    - AI-generated images for each scene
+    - Synchronized audio and video assembly
     
-    **Authentication**: Requires API key if configured (X-API-Key header)
+    ### Workflow
     
-    Args:
-        request: Generation request parameters
-        background_tasks: FastAPI background tasks
-        api_key: API key for authentication (automatically verified)
-        
-    Returns:
-        Job ID and initial status
+    1. Submit this request with your topic
+    2. Receive a job ID immediately
+    3. Poll `/status/{job_id}` to track progress
+    4. Download the video when complete
+    
+    ### Authentication
+    
+    **Protected endpoint**: Requires API key if configured (X-API-Key header)
+    
+    ### Example Request
+    
+    ```json
+    {
+        "topic": "The History of Space Exploration",
+        "num_scenes": 8
+    }
+    ```
     """
     # Validate request
     if not request.use_static_scenes and not request.topic:
@@ -313,16 +483,45 @@ async def generate_video(
     )
 
 
-@app.get("/status/{job_id}", response_model=JobStatusResponse)
+@app.get(
+    "/status/{job_id}", 
+    response_model=JobStatusResponse,
+    tags=["status"],
+    summary="Get job status and progress",
+    response_description="Current job status with progress information"
+)
 async def get_job_status(job_id: str):
     """
-    Get the status of a video generation job.
+    ## Get Job Status and Progress
     
-    Args:
-        job_id: The job ID returned from the /generate endpoint
-        
-    Returns:
-        Current job status, progress, and video URL if complete
+    Retrieve the current status, progress, and results of a video generation job.
+    
+    ### Job Statuses
+    
+    - **queued**: Job is queued for processing
+    - **generating_scenes**: Generating scenes from topic
+    - **generating_content**: Creating images and narration
+    - **generating_audio**: Synthesizing audio narration
+    - **assembling_video**: Assembling final video
+    - **complete**: Video generation complete (video_url available)
+    - **failed**: Job failed (error message available)
+    
+    ### Public Endpoint
+    
+    This endpoint is **always accessible** without authentication.
+    
+    ### Example Response
+    
+    ```json
+    {
+        "job_id": "abc123",
+        "status": "complete",
+        "progress": "Video generation complete!",
+        "created_at": "2024-01-01T12:00:00",
+        "completed_at": "2024-01-01T12:05:30",
+        "video_url": "/outputs/final_video.mp4"
+    }
+    ```
     """
     if not job_exists(job_id):
         raise HTTPException(status_code=404, detail="Job not found")
@@ -340,29 +539,54 @@ async def get_job_status(job_id: str):
     )
 
 
-@app.get("/jobs")
+@app.get(
+    "/jobs",
+    tags=["jobs"],
+    summary="List all jobs",
+    response_description="List of all video generation jobs"
+)
 async def list_all_jobs(api_key: str = Security(verify_api_key)):
     """
-    List all jobs.
+    ## List All Video Generation Jobs
     
-    **Authentication**: Requires API key if configured (X-API-Key header)
+    Retrieve a list of all video generation jobs with their current status.
     
-    Args:
-        api_key: API key for authentication (automatically verified)
+    ### Authentication
     
-    Returns:
-        List of all jobs with their current status
+    **Protected endpoint**: Requires API key if configured (X-API-Key header)
+    
+    ### Response
+    
+    Returns an array of job objects, each containing:
+    - Job ID
+    - Current status
+    - Progress information
+    - Creation and completion timestamps
+    - Video URL (if complete)
+    - Error message (if failed)
     """
     return {"jobs": list_jobs()}
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    tags=["health"],
+    summary="Health check",
+    response_description="API health status"
+)
 async def health_check():
     """
-    Health check endpoint.
+    ## Health Check
     
-    Returns:
-        API health status
+    Check if the API is running and healthy.
+    
+    ### Public Endpoint
+    
+    This endpoint is **always accessible** without authentication.
+    
+    ### Response
+    
+    Returns the service name, version, and health status.
     """
     return {
         "status": "healthy",
