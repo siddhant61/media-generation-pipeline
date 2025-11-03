@@ -55,8 +55,8 @@ services:
       # Persist generated content
       - ./generated_content:/app/generated_content
       
-      # Optional: Mount background music if provided
-      - ${BACKGROUND_MUSIC_FILE:-/dev/null}:/app/background_music.mp3:ro
+      # Optional: Mount background music if provided (uncomment and set path)
+      # - ${BACKGROUND_MUSIC_FILE}:/app/background_music.mp3:ro
     depends_on:
       redis:
         condition: service_healthy

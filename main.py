@@ -268,14 +268,13 @@ async def startup_event():
         config.validate()
         os.makedirs(config.output_dir, exist_ok=True)
         
-        # Initialize Redis job store
+        # Initialize Redis job store with retry logic
         try:
             job_store = JobStoreService()
             if job_store.ping():
                 print(f"Media Generation Pipeline API started with Redis job store")
             else:
-                print(f"Warning: Redis connection failed, using in-memory job storage")
-                job_store = None
+                raise Exception("Redis ping failed")
         except Exception as redis_error:
             print(f"Warning: Could not connect to Redis: {redis_error}")
             print(f"Using in-memory job storage as fallback")
@@ -291,38 +290,53 @@ async def startup_event():
 
 def get_job(job_id: str) -> Optional[dict]:
     """Get a job from storage (Redis or in-memory)."""
-    if job_store and job_store.ping():
-        return job_store.get_job(job_id)
+    if job_store:
+        try:
+            return job_store.get_job(job_id)
+        except Exception:
+            pass
     return jobs.get(job_id)
 
 
 def store_job(job_id: str, job_data: dict) -> None:
     """Store a job in storage (Redis or in-memory)."""
-    if job_store and job_store.ping():
-        job_store.create_job(job_id, job_data)
-    else:
-        jobs[job_id] = job_data
+    if job_store:
+        try:
+            job_store.create_job(job_id, job_data)
+            return
+        except Exception:
+            pass
+    jobs[job_id] = job_data
 
 
 def update_job_data(job_id: str, job_data: dict) -> None:
     """Update a job in storage (Redis or in-memory)."""
-    if job_store and job_store.ping():
-        job_store.update_job(job_id, job_data)
-    else:
-        jobs[job_id] = job_data
+    if job_store:
+        try:
+            job_store.update_job(job_id, job_data)
+            return
+        except Exception:
+            pass
+    jobs[job_id] = job_data
 
 
 def list_jobs() -> List[dict]:
     """List all jobs from storage (Redis or in-memory)."""
-    if job_store and job_store.ping():
-        return job_store.list_all_jobs()
+    if job_store:
+        try:
+            return job_store.list_all_jobs()
+        except Exception:
+            pass
     return list(jobs.values())
 
 
 def job_exists(job_id: str) -> bool:
     """Check if a job exists in storage (Redis or in-memory)."""
-    if job_store and job_store.ping():
-        return job_store.exists(job_id)
+    if job_store:
+        try:
+            return job_store.exists(job_id)
+        except Exception:
+            pass
     return job_id in jobs
 
 
