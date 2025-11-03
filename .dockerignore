@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist
+build
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated content (will be created at runtime)
+generated_content/
+
+# Documentation
+*.md
+!DEPLOYMENT.md
+LICENSE
+
+# Examples and tests
+example_*.py
+tests/
+
+# Environment files (sensitive)
+.env
+.env.local
