@@ -5,6 +5,7 @@ Handles combining images and audio into final MP4 videos.
 
 import os
 from typing import List, Optional
+from dataclasses import replace
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeVideoClip
 from PIL import Image
 
@@ -104,6 +105,9 @@ class VideoAssembler:
             # Concatenate all clips
             final_clip = concatenate_videoclips(clips, method="compose")
             
+            # Calculate total duration before closing clips
+            total_duration = sum(c.duration for c in clips)
+            
             # Set output path
             output_path = os.path.join(self.output_dir, output_filename)
             
@@ -125,7 +129,7 @@ class VideoAssembler:
                 clip.close()
             
             print(f"Video successfully created: {output_path}")
-            print(f"Total duration: {sum(c.duration for c in clips):.2f}s")
+            print(f"Total duration: {total_duration:.2f}s")
             
             return output_path
             
@@ -169,7 +173,6 @@ class VideoAssembler:
                 )
                 
                 # Create a copy of the scene with the overlay image
-                from dataclasses import replace
                 scene_copy = replace(scene, image_file=overlay_path)
                 scenes_with_overlays.append(scene_copy)
             else:

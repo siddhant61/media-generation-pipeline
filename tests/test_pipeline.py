@@ -258,7 +258,3 @@ class TestConfig:
         assert isinstance(config.llm_config, LLMConfig)
         assert config.tts_config is not None
         assert isinstance(config.tts_config, TTSConfig)
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
