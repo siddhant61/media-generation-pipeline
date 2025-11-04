@@ -195,9 +195,9 @@ All UI components tested:
 
 ```
 ui/
-├── index.html    (8,057 bytes)  - Main HTML structure
-├── style.css     (10,478 bytes) - Complete styling
-└── app.js        (14,299 bytes) - Client-side logic
+├── index.html    (185 lines)  - Main HTML structure
+├── style.css     (569 lines)  - Complete styling
+└── app.js        (461 lines)  - Client-side logic
 
 Total: 1,215 lines of code
 ```
@@ -206,7 +206,7 @@ Total: 1,215 lines of code
 
 ### Endpoints
 - **UI**: `http://localhost:8000/` (root)
-- **API**: `http://localhost:8000/generate`, `/status`, `/health`
+- **API**: `http://localhost:8000/generate`, `/status/{job_id}`, `/health`
 - **Videos**: `http://localhost:8000/outputs/{filename}`
 - **Docs**: `http://localhost:8000/docs` (Swagger UI)
 
