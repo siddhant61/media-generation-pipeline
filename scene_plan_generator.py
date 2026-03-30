@@ -71,7 +71,7 @@ def list_research_brief_fixtures() -> List[str]:
     if not os.path.isdir(FIXTURES_DIR):
         return []
     return [
-        f[:-5] for f in sorted(os.listdir(FIXTURES_DIR))
+        os.path.splitext(f)[0] for f in sorted(os.listdir(FIXTURES_DIR))
         if f.endswith(".json")
     ]
 

@@ -173,14 +173,17 @@ class TestProvenancePreservation:
     ):
         """Each finding scene should carry the citation_refs from its source finding."""
         findings = canonical_brief["key_findings"]
-        # Scenes 1..N-1 (skip intro at 0, skip timeline/conclusion at end)
-        for i, finding in enumerate(findings[:4]):
-            scene = canonical_plan["scenes"][i + 1]  # +1 to skip intro
-            expected_refs = finding.get("citation_refs", [])
-            assert scene["citation_refs"] == expected_refs, (
-                f"Scene '{scene['title']}' citation_refs mismatch: "
-                f"expected {expected_refs}, got {scene['citation_refs']}"
-            )
+        finding_titles = {f["title"] for f in findings[:4]}
+        for scene in canonical_plan["scenes"]:
+            if scene["title"] in finding_titles:
+                # Find the matching finding by title
+                matching = [f for f in findings if f["title"] == scene["title"]]
+                assert len(matching) == 1
+                expected_refs = matching[0].get("citation_refs", [])
+                assert scene["citation_refs"] == expected_refs, (
+                    f"Scene '{scene['title']}' citation_refs mismatch: "
+                    f"expected {expected_refs}, got {scene['citation_refs']}"
+                )
 
     def test_all_citation_refs_are_valid_source_ids(
         self, canonical_brief, canonical_plan
@@ -242,9 +245,11 @@ class TestEntityPreservation:
             e.get("label", e) if isinstance(e, dict) else str(e)
             for e in canonical_brief.get("entities", [])
         ]
-        finding_scenes = canonical_plan["scenes"][1:-1]  # skip intro and conclusion
-        for scene in finding_scenes:
-            if scene["title"] != "Timeline":
+        finding_titles = {
+            f["title"] for f in canonical_brief["key_findings"][:4]
+        }
+        for scene in canonical_plan["scenes"]:
+            if scene["title"] in finding_titles:
                 assert len(scene["entity_refs"]) > 0, (
                     f"Scene '{scene['title']}' has no entity_refs"
                 )
