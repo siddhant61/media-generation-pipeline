@@ -3,14 +3,63 @@
   "schema_version": "1.0.0",
   "artifact_id": "sample-scene-plan",
   "created_at": "2026-03-30T00:00:00Z",
-  "producer": "starter-pack",
+  "producer": "media-generation-pipeline",
   "source_run_id": "bootstrap",
   "topic": "jwst_star_formation_early_universe_demo",
-  "narrative_goal": "Create a short explainer on JWST, star formation, and the early universe.",
+  "narrative_goal": "How does JWST help us understand star formation and the early universe?",
   "target_audience": "general educated audience",
   "style_profile": {
     "tone": "wonder + scientific clarity",
     "visual_style": "cinematic scientific explainer"
   },
-  "scenes": []
+  "scenes": [
+    {
+      "scene_id": "scene-001",
+      "title": "Introduction",
+      "purpose": "Set context and introduce the topic",
+      "narration": "The James Webb Space Telescope is the most powerful space telescope ever built, allowing us to peer through cosmic dust and detect light from the earliest galaxies.",
+      "visual_brief": "Wide establishing shot of JWST in space at the L2 point. Cinematic imagery with text overlay.",
+      "on_screen_text": "How does JWST help us understand star formation and the early universe?",
+      "entity_refs": ["James Webb Space Telescope", "infrared astronomy", "L2 orbit"],
+      "citation_refs": [],
+      "duration_seconds": 15,
+      "transition": "fade_in"
+    },
+    {
+      "scene_id": "scene-002",
+      "title": "Infrared Vision Reveals Hidden Stellar Nurseries",
+      "purpose": "Present key finding: infrared observations of star-forming regions",
+      "narration": "JWST's NIRCam and MIRI instruments see through dense dust clouds, revealing protostars in the Carina Nebula and the Pillars of Creation.",
+      "visual_brief": "Side-by-side comparison of visible vs infrared views of the Carina Nebula.",
+      "on_screen_text": "Infrared Vision Reveals Hidden Stellar Nurseries",
+      "entity_refs": ["James Webb Space Telescope", "infrared astronomy", "star formation"],
+      "citation_refs": ["nasa-webb-overview"],
+      "duration_seconds": 20,
+      "transition": "cross_dissolve"
+    },
+    {
+      "scene_id": "scene-003",
+      "title": "Earliest Galaxies Detected",
+      "purpose": "Present key finding: discovery of early galaxies",
+      "narration": "JWST has detected galaxies forming just 300-400 million years after the Big Bang, challenging existing models of galaxy formation.",
+      "visual_brief": "Deep field image with highlighted early galaxy candidates and redshift labels.",
+      "on_screen_text": "Earliest Galaxies Detected",
+      "entity_refs": ["James Webb Space Telescope", "early universe", "galaxies"],
+      "citation_refs": ["nasa-webb-factsheet"],
+      "duration_seconds": 20,
+      "transition": "cross_dissolve"
+    },
+    {
+      "scene_id": "scene-004",
+      "title": "Conclusion",
+      "purpose": "Wrap up and point to future directions",
+      "narration": "Looking ahead, JWST continues to transform our understanding of stellar nurseries and the dawn of the cosmos.",
+      "visual_brief": "Cinematic pull-back shot from JWST. Summary text overlay with credits.",
+      "on_screen_text": "What's Next?",
+      "entity_refs": [],
+      "citation_refs": [],
+      "duration_seconds": 12,
+      "transition": "fade_out"
+    }
+  ]
 }
