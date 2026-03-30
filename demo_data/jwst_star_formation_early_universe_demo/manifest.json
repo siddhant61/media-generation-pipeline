@@ -1,0 +1,147 @@
+{
+  "artifact_type": "RawSourceBundle",
+  "schema_version": "1.0.0",
+  "artifact_id": "jwst-star-formation-demo-source-bundle",
+  "created_at": "2026-03-30T00:00:00Z",
+  "producer": "starter-pack",
+  "source_run_id": "bootstrap",
+  "topic": "James Webb Space Telescope: telescope architecture, star formation, and the early universe",
+  "source_bundle_name": "jwst_star_formation_early_universe_demo",
+  "status": "scaffold_only",
+  "notes": [
+    "This starter pack contains a curated source manifest and directory scaffold.",
+    "Raw external assets are not bundled here.",
+    "Use this manifest to drive Codex-based retrieval/normalization in each repo."
+  ],
+  "seed_entities": [
+    "James Webb Space Telescope",
+    "infrared astronomy",
+    "L2 orbit",
+    "sunshield",
+    "primary mirror",
+    "star formation",
+    "early universe",
+    "galaxies",
+    "exoplanets",
+    "spectroscopy"
+  ],
+  "sources": [
+    {
+      "source_id": "jwst-nasa-mission-overview",
+      "title": "NASA Webb Mission Overview",
+      "source_type": "webpage",
+      "origin_org": "NASA",
+      "url": "https://science.nasa.gov/mission/webb/",
+      "local_path": "sources/web/jwst_nasa_mission_overview.html",
+      "mime_type": "text/html",
+      "language": "en",
+      "license": "See NASA media usage guidelines; exclude third-party-marked items",
+      "usage_notes": "Primary mission overview and authoritative framing source",
+      "retrieved_at": null,
+      "checksum": null,
+      "tags": [
+        "overview",
+        "mission",
+        "jwst",
+        "authoritative"
+      ]
+    },
+    {
+      "source_id": "jwst-nasa-fact-sheet",
+      "title": "NASA Webb Fact Sheet",
+      "source_type": "webpage",
+      "origin_org": "NASA",
+      "url": "https://science.nasa.gov/mission/webb/fact-sheet/",
+      "local_path": "sources/web/jwst_nasa_fact_sheet.html",
+      "mime_type": "text/html",
+      "language": "en",
+      "license": "See NASA media usage guidelines",
+      "usage_notes": "Structured technical background for ingestion and graph seeding",
+      "retrieved_at": null,
+      "checksum": null,
+      "tags": [
+        "fact-sheet",
+        "technical",
+        "jwst"
+      ]
+    },
+    {
+      "source_id": "jwst-nasa-about-infographic",
+      "title": "About the James Webb Space Telescope",
+      "source_type": "webpage",
+      "origin_org": "NASA",
+      "url": "https://science.nasa.gov/asset/webb/about-the-james-webb-space-telescope/",
+      "local_path": "sources/images/jwst_about_infographic_reference.txt",
+      "mime_type": "text/plain",
+      "language": "en",
+      "license": "See NASA media usage guidelines",
+      "usage_notes": "Diagram/infographic reference for component and system structure",
+      "retrieved_at": null,
+      "checksum": null,
+      "tags": [
+        "diagram",
+        "infographic",
+        "components"
+      ]
+    },
+    {
+      "source_id": "jwst-nasa-gallery",
+      "title": "NASA James Webb Space Telescope Gallery",
+      "source_type": "webpage",
+      "origin_org": "NASA",
+      "url": "https://www.nasa.gov/gallery/james-webb-space-telescope/",
+      "local_path": "sources/images/jwst_gallery_index.html",
+      "mime_type": "text/html",
+      "language": "en",
+      "license": "See NASA media usage guidelines; exclude third-party-marked items",
+      "usage_notes": "Visual asset index for media pipeline and provenance links",
+      "retrieved_at": null,
+      "checksum": null,
+      "tags": [
+        "gallery",
+        "images",
+        "visuals"
+      ]
+    },
+    {
+      "source_id": "jwst-nasa-video-star-formation",
+      "title": "Webb: Transforming Our Understanding of Star Formation",
+      "source_type": "video",
+      "origin_org": "NASA",
+      "url": "https://science.nasa.gov/asset/webb/webb-transforming-our-understanding-of-star-formation/",
+      "local_path": "sources/video/jwst_star_formation_video_reference.txt",
+      "mime_type": "text/plain",
+      "language": "en",
+      "license": "See NASA media usage guidelines",
+      "usage_notes": "Reference page expected to expose downloadable video, captions, and transcript",
+      "retrieved_at": null,
+      "checksum": null,
+      "tags": [
+        "video",
+        "star-formation",
+        "transcript",
+        "captions"
+      ]
+    },
+    {
+      "source_id": "jwst-esa-brochure",
+      "title": "ESA Webb Ready-to-use Material",
+      "source_type": "pdf",
+      "origin_org": "ESA",
+      "url": "https://www.esa.int/About_Us/Exhibitions/Ready-to-use_material/Webb",
+      "local_path": "sources/pdf/esa_webb_brochure_reference.txt",
+      "mime_type": "text/plain",
+      "language": "en",
+      "license": "Check ESA page for asset-specific usage terms",
+      "usage_notes": "Outreach brochure / printable material for supplemental ingestion",
+      "retrieved_at": null,
+      "checksum": null,
+      "tags": [
+        "pdf",
+        "brochure",
+        "esa",
+        "outreach"
+      ]
+    }
+  ]
+}

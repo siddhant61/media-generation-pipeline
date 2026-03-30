@@ -1,0 +1,18 @@
+{
+  "artifact_type": "ResearchBrief",
+  "schema_version": "1.0.0",
+  "artifact_id": "sample-research-brief",
+  "created_at": "2026-03-30T00:00:00Z",
+  "producer": "starter-pack",
+  "source_run_id": "bootstrap",
+  "topic": "jwst_star_formation_early_universe_demo",
+  "research_question": "How does JWST help us understand star formation and the early universe?",
+  "executive_summary": "",
+  "key_findings": [],
+  "entities": [],
+  "timeline": [],
+  "source_index": [],
+  "citation_map": {},
+  "open_questions": [],
+  "recommended_angles": []
+}

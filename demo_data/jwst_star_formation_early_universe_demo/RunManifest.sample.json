@@ -1,0 +1,17 @@
+{
+  "artifact_type": "RunManifest",
+  "schema_version": "1.0.0",
+  "artifact_id": "sample-run-manifest",
+  "created_at": "2026-03-30T00:00:00Z",
+  "producer": "starter-pack",
+  "source_run_id": "bootstrap",
+  "pipeline_name": "material-ingestion-pipeline",
+  "pipeline_stage": "bootstrap",
+  "status": "pending",
+  "inputs": {
+    "topic": "jwst_star_formation_early_universe_demo"
+  },
+  "outputs": [],
+  "metrics": {},
+  "errors": []
+}
