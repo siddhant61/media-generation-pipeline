@@ -169,7 +169,7 @@ pip install -e .
 ## 🧪 Testing
 
 ```bash
-# Run all tests (66 tests)
+# Run all tests (115 tests)
 pytest tests/ -v
 
 # Run Phase 1 happy path tests only
