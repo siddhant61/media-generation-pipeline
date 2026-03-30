@@ -216,6 +216,7 @@ Temporary Items
 
 # Generated content and outputs
 generated_content/
+generated_artifacts/
 output/
 outputs/
 *.png

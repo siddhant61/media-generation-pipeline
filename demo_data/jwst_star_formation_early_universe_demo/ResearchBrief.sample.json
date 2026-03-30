@@ -3,16 +3,74 @@
   "schema_version": "1.0.0",
   "artifact_id": "sample-research-brief",
   "created_at": "2026-03-30T00:00:00Z",
-  "producer": "starter-pack",
+  "producer": "content-research-pipeline",
   "source_run_id": "bootstrap",
   "topic": "jwst_star_formation_early_universe_demo",
   "research_question": "How does JWST help us understand star formation and the early universe?",
-  "executive_summary": "",
-  "key_findings": [],
-  "entities": [],
-  "timeline": [],
-  "source_index": [],
-  "citation_map": {},
-  "open_questions": [],
-  "recommended_angles": []
+  "executive_summary": "The James Webb Space Telescope, launched in December 2021, is the most powerful space telescope ever built. Its 6.5-meter gold-coated primary mirror and suite of infrared instruments allow it to peer through cosmic dust clouds to observe star-forming regions in unprecedented detail, and to detect light from the earliest galaxies formed just a few hundred million years after the Big Bang.",
+  "key_findings": [
+    {
+      "title": "Infrared Vision Reveals Hidden Stellar Nurseries",
+      "summary": "JWST's NIRCam and MIRI instruments can see through dense dust clouds that block visible light, revealing protostars and young stellar objects in regions like the Carina Nebula and the Pillars of Creation.",
+      "citation_refs": ["nasa-webb-overview"]
+    },
+    {
+      "title": "Earliest Galaxies Detected",
+      "summary": "JWST has detected galaxies forming just 300-400 million years after the Big Bang, far earlier than previous telescopes could observe. These discoveries challenge existing models of early galaxy formation.",
+      "citation_refs": ["nasa-webb-factsheet"]
+    },
+    {
+      "title": "Atmospheric Characterization of Exoplanets",
+      "summary": "Using its spectroscopic capabilities, JWST has identified water vapor, carbon dioxide, and other molecules in the atmospheres of exoplanets, opening a new chapter in the search for habitable worlds.",
+      "citation_refs": ["esa-webb-brochure"]
+    },
+    {
+      "title": "Sunshield and L2 Orbit Enable Deep Infrared Observation",
+      "summary": "The five-layer sunshield keeps JWST's instruments at -233°C, while its position at the Sun-Earth L2 Lagrange point provides a stable thermal environment essential for detecting faint infrared signals from the distant universe.",
+      "citation_refs": ["nasa-webb-factsheet"]
+    }
+  ],
+  "entities": [
+    {"label": "James Webb Space Telescope", "type": "instrument"},
+    {"label": "infrared astronomy", "type": "field"},
+    {"label": "L2 orbit", "type": "location"},
+    {"label": "sunshield", "type": "component"},
+    {"label": "primary mirror", "type": "component"},
+    {"label": "star formation", "type": "process"},
+    {"label": "early universe", "type": "concept"},
+    {"label": "galaxies", "type": "object"},
+    {"label": "exoplanets", "type": "object"},
+    {"label": "spectroscopy", "type": "technique"}
+  ],
+  "timeline": [
+    {"date": "1996", "event": "JWST project formally proposed as the Next Generation Space Telescope"},
+    {"date": "2004", "event": "Northrop Grumman selected as prime contractor; renamed to James Webb Space Telescope"},
+    {"date": "2021-12-25", "event": "JWST launched from Kourou, French Guiana aboard Ariane 5"},
+    {"date": "2022-01", "event": "Sunshield deployed and primary mirror segments aligned"},
+    {"date": "2022-07-12", "event": "First full-color images released: Carina Nebula, Stephan's Quintet, SMACS 0723 deep field"}
+  ],
+  "source_index": [
+    {"source_id": "nasa-webb-overview", "title": "NASA Webb Mission Overview", "url": "https://webb.nasa.gov/content/about/index.html"},
+    {"source_id": "nasa-webb-factsheet", "title": "NASA Webb Fact Sheet", "url": "https://webb.nasa.gov/content/about/factSheet.html"},
+    {"source_id": "esa-webb-brochure", "title": "ESA Webb Brochure", "url": "https://www.esa.int/Science_Exploration/Space_Science/Webb"}
+  ],
+  "citation_map": {
+    "nasa-webb-overview": ["key_findings[0]"],
+    "nasa-webb-factsheet": ["key_findings[1]", "key_findings[3]"],
+    "esa-webb-brochure": ["key_findings[2]"]
+  },
+  "open_questions": [
+    "How do the earliest detected galaxies fit with current cosmological models of structure formation?",
+    "Can JWST detect biosignatures in the atmospheres of nearby rocky exoplanets?"
+  ],
+  "recommended_angles": [
+    {
+      "angle": "Star Formation Revealed",
+      "description": "Focus on how JWST's infrared vision has transformed our understanding of stellar nurseries by seeing through dust clouds."
+    },
+    {
+      "angle": "Dawn of the Cosmos",
+      "description": "Explore the earliest galaxy detections and what they tell us about the universe's first few hundred million years."
+    }
+  ]
 }
