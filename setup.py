@@ -43,6 +43,8 @@ setup(
         "run_manifest_writer",
         "generate_scene_plan",
         "validate_artifacts",
+        "bridge_adapter",
+        "bridge_cli",
     ],
     install_requires=requirements,
     python_requires=">=3.8",

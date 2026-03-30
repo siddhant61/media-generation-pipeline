@@ -33,13 +33,68 @@ python generate_scene_plan.py \
 python validate_artifacts.py generated_artifacts/
 ```
 
+## Phase 1.5 Bridge: ScenePlan → Legacy Rendering
+
+The bridge adapter (`bridge_adapter.py`) connects the contract-aligned ScenePlan to the legacy rendering pipeline (SceneManager → ContentGenerator → VideoAssembler). The bridge CLI (`bridge_cli.py`) provides a single entry point that:
+
+1. Accepts a **ResearchBrief** or **ScenePlan** as input
+2. Generates a ScenePlan (if starting from ResearchBrief)
+3. Bridges contract scenes to legacy `Scene` dataclass instances
+4. Optionally attempts full rendering through the legacy pipeline
+5. Emits a contract-valid **MediaPackage** with rich bridge/render metadata
+
+```bash
+# Dry-run: bridge + validate (no API keys needed)
+python bridge_cli.py \
+  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
+  --dry-run --validate
+
+# From an existing ScenePlan
+python bridge_cli.py \
+  demo_data/jwst_star_formation_early_universe_demo/ScenePlan.sample.json \
+  --scene-plan --dry-run --validate
+
+# Full render attempt (requires OPENAI_API_KEY + STABILITY_API_KEY)
+python bridge_cli.py \
+  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
+  --render --validate
+```
+
+### Bridge field mapping
+
+| Contract ScenePlan scene field | Legacy Scene field |
+|---|---|
+| `scene_id` | `id` |
+| `title` | `name` |
+| `visual_brief` | `prompt` |
+| `narration` | `narration` |
+| _(not yet rendered)_ | `image_file` = `""` |
+| _(not yet rendered)_ | `audio_file` = `""` |
+
+### What requires API keys
+
+The bridge itself (ScenePlan → legacy Scene mapping) requires **no API keys**. Full rendering requires:
+
+| Service | Env Variable | Used For |
+|---|---|---|
+| OpenAI | `OPENAI_API_KEY` | LLM narration generation + TTS audio |
+| Stability AI | `STABILITY_API_KEY` | Image generation |
+
+Without these keys, rendering stops at the `content_generator_init` stage and a placeholder MediaPackage is emitted with metadata documenting exactly where rendering was blocked.
+
+### Minimum renderable happy path
+
+1. Set `OPENAI_API_KEY` and `STABILITY_API_KEY` environment variables
+2. Run `python bridge_cli.py <ResearchBrief.json> --render --validate`
+3. Pipeline will: generate ScenePlan → bridge scenes → generate images/audio via APIs → assemble video via MoviePy
+
 ### What gets produced
 
 | Artifact | Status | Description |
 |---|---|---|
 | `ScenePlan` | ✅ Stable | Scene-by-scene plan built from ResearchBrief findings, timeline, entities |
 | `RunManifest` | ✅ Stable | Pipeline run tracking with inputs, outputs, metrics |
-| `MediaPackage` | ⚠️ Placeholder | Lightweight manifest listing expected assets (full rendering not yet stable) |
+| `MediaPackage` | ✅ Bridged | Contract-valid manifest with bridge render metadata; placeholder assets when rendering is API-gated |
 
 All outputs follow the naming convention: `<topic_slug>__<artifact_type>__<timestamp>.json`
 
@@ -74,6 +129,10 @@ media-generation-pipeline/
 ├── generate_scene_plan.py      # CLI entrypoint for Phase 1 happy path
 ├── validate_artifacts.py       # Validate artifacts against shared contract
 │
+│── Phase 1.5 bridge (ScenePlan → legacy rendering pipeline)
+├── bridge_adapter.py           # ScenePlan scenes → legacy Scene dataclass
+├── bridge_cli.py               # CLI: ResearchBrief/ScenePlan → bridge → render → MediaPackage
+│
 │── Legacy pipeline modules (topic → video via API calls)
 ├── config.py                   # Configuration (LLM, TTS, Video, API settings)
 ├── scene_manager.py            # Dynamic and static scene management
@@ -88,6 +147,7 @@ media-generation-pipeline/
 ├── ui/                         # Web UI for video generation
 ├── tests/                      # Test suite
 │   ├── test_scene_plan_generator.py  # Phase 1 happy path tests (41 tests)
+│   ├── test_bridge.py          # Phase 1.5 bridge tests (25 tests)
 │   ├── test_pipeline.py        # Legacy pipeline tests
 │   ├── test_api.py             # API endpoint tests
 │   ├── test_api_security.py    # Security tests
@@ -109,11 +169,14 @@ pip install -e .
 ## 🧪 Testing
 
 ```bash
-# Run all tests (90 tests)
+# Run all tests (66 tests)
 pytest tests/ -v
 
 # Run Phase 1 happy path tests only
 pytest tests/test_scene_plan_generator.py -v
+
+# Run Phase 1.5 bridge tests only
+pytest tests/test_bridge.py -v
 
 # Run legacy pipeline tests
 pytest tests/test_pipeline.py tests/test_api.py -v
@@ -168,7 +231,10 @@ See [API.md](API.md) for full REST API documentation and [DEPLOYMENT.md](DEPLOYM
 | ScenePlan generation from ResearchBrief | ✅ Working | Deterministic, no API keys needed |
 | Artifact validation against contract | ✅ Working | All 3 artifact types validated |
 | Placeholder MediaPackage | ✅ Working | Lists expected assets without rendering |
-| Full video rendering from ScenePlan | ⚠️ Blocked | Requires OpenAI + Stability AI keys; not yet wired to ScenePlan |
+| Bridge: ScenePlan → legacy Scene mapping | ✅ Working | `bridge_adapter.py` maps all fields correctly |
+| Bridge CLI (structured input path) | ✅ Working | Accepts ResearchBrief or ScenePlan, emits all artifacts |
+| Bridged MediaPackage with render metadata | ✅ Working | Records exactly where rendering was blocked |
+| Full video rendering from ScenePlan | ⚠️ API-gated | Requires `OPENAI_API_KEY` + `STABILITY_API_KEY`; pipeline stops at `content_generator_init` without them |
 | LLM-enhanced scene generation | ⚠️ Future | Could enhance scene narration/visuals via LLM |
 
 ## 📄 License
