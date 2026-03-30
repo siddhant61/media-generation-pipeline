@@ -29,8 +29,36 @@ python generate_scene_plan.py \
   demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
   --media-package --validate
 
+# Use a canonical fixture from content-research-pipeline
+python generate_scene_plan.py \
+  fixtures/research_briefs/jwst_canonical.json \
+  --media-package --validate
+
 # Validate any artifact against the shared contract
 python validate_artifacts.py generated_artifacts/
+```
+
+### Canonical ResearchBrief Fixtures
+
+The `fixtures/research_briefs/` directory provides stable input fixtures that simulate artifacts produced by `content-research-pipeline`. These are used for integration testing and as the primary input path for downstream handoff validation.
+
+```python
+from scene_plan_generator import load_research_brief_fixture, list_research_brief_fixtures
+
+# List available fixtures
+print(list_research_brief_fixtures())  # ['jwst_canonical']
+
+# Load a fixture and generate a ScenePlan
+brief = load_research_brief_fixture("jwst_canonical")
+plan = generate_scene_plan(brief)
+```
+
+The provenance chain from upstream research is preserved:
+
+```
+ResearchBrief.source_index[].source_id
+    → ResearchBrief.key_findings[].citation_refs[]
+    → ScenePlan.scenes[].citation_refs[]
 ```
 
 ## Phase 1.5 Bridge: ScenePlan → Legacy Rendering
@@ -47,6 +75,11 @@ The bridge adapter (`bridge_adapter.py`) connects the contract-aligned ScenePlan
 # Dry-run: bridge + validate (no API keys needed)
 python bridge_cli.py \
   demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
+  --dry-run --validate
+
+# Using canonical fixture from content-research-pipeline
+python bridge_cli.py \
+  fixtures/research_briefs/jwst_canonical.json \
   --dry-run --validate
 
 # From an existing ScenePlan
@@ -115,6 +148,9 @@ media-generation-pipeline/
 │   ├── shared_artifacts.json   # JSON schema definitions for all artifacts
 │   ├── schemas.md              # Markdown schema documentation
 │   └── demo_manifest.md        # Demo configuration and happy path steps
+├── fixtures/                   # Canonical input fixtures
+│   └── research_briefs/        # ResearchBrief fixtures from content-research-pipeline
+│       └── jwst_canonical.json # Canonical JWST demo fixture
 ├── demo_data/                  # Canonical demo scaffold
 │   └── jwst_star_formation_early_universe_demo/
 │       ├── ResearchBrief.sample.json   # Populated JWST research brief
@@ -145,13 +181,14 @@ media-generation-pipeline/
 ├── services/                   # Production services
 │   └── job_store.py            # Redis-based job persistence
 ├── ui/                         # Web UI for video generation
-├── tests/                      # Test suite
-│   ├── test_scene_plan_generator.py  # Phase 1 happy path tests (41 tests)
-│   ├── test_bridge.py          # Phase 1.5 bridge tests (25 tests)
-│   ├── test_pipeline.py        # Legacy pipeline tests
-│   ├── test_api.py             # API endpoint tests
-│   ├── test_api_security.py    # Security tests
-│   └── test_job_store.py       # Redis job store tests
+├── tests/                      # Test suite (151 tests)
+│   ├── test_scene_plan_generator.py       # Phase 1 happy path tests (41 tests)
+│   ├── test_bridge.py                     # Phase 1.5 bridge tests (25 tests)
+│   ├── test_research_brief_handoff.py     # Phase 2A fixture handoff tests (36 tests)
+│   ├── test_pipeline.py                   # Legacy pipeline tests
+│   ├── test_api.py                        # API endpoint tests
+│   ├── test_api_security.py               # Security tests
+│   └── test_job_store.py                  # Redis job store tests
 ├── setup.py                    # Package setup
 ├── requirements.txt            # Python dependencies
 ├── Dockerfile                  # Multi-stage Docker build
@@ -169,7 +206,7 @@ pip install -e .
 ## 🧪 Testing
 
 ```bash
-# Run all tests (115 tests)
+# Run all tests (151 tests)
 pytest tests/ -v
 
 # Run Phase 1 happy path tests only
@@ -177,6 +214,9 @@ pytest tests/test_scene_plan_generator.py -v
 
 # Run Phase 1.5 bridge tests only
 pytest tests/test_bridge.py -v
+
+# Run Phase 2A fixture handoff tests only
+pytest tests/test_research_brief_handoff.py -v
 
 # Run legacy pipeline tests
 pytest tests/test_pipeline.py tests/test_api.py -v
@@ -224,16 +264,53 @@ docker-compose up -d
 
 See [API.md](API.md) for full REST API documentation and [DEPLOYMENT.md](DEPLOYMENT.md) for deployment guides.
 
-## Phase 1 Blockers & Status
+## Minimum Renderable Path
+
+The following describes the minimum path that works without external API keys, and what requires API keys.
+
+### Works without API keys (always available)
+
+1. **Load a ResearchBrief** — from `fixtures/research_briefs/`, `demo_data/`, or any valid JSON
+2. **Generate a ScenePlan** — deterministic scene generation from structured brief data
+3. **Validate all artifacts** — check against `contracts/shared_artifacts.json`
+4. **Bridge to legacy scenes** — map contract ScenePlan → legacy Scene dataclass
+5. **Emit placeholder MediaPackage** — contract-valid manifest listing expected assets
+
+```bash
+python bridge_cli.py fixtures/research_briefs/jwst_canonical.json --dry-run --validate
+```
+
+### Requires API keys (rendering path)
+
+Full rendering through the legacy pipeline requires external API keys. Without them, the pipeline stops at the `content_generator_init` stage and emits a placeholder MediaPackage documenting the block.
+
+| Stage | Requires | Description |
+|---|---|---|
+| `content_generator_init` | `OPENAI_API_KEY` | Initialize LLM/TTS content generator |
+| `content_generation` | `OPENAI_API_KEY` | Generate scene narration/text via LLM |
+| `audio_generation` | `OPENAI_API_KEY` | Generate TTS audio for narration |
+| `content_generation` (images) | `STABILITY_API_KEY` | Generate scene images via Stability AI |
+| `video_assembly` | _(none — uses MoviePy)_ | Assemble final video from images + audio |
+
+```bash
+export OPENAI_API_KEY='your-key'
+export STABILITY_API_KEY='your-key'
+python bridge_cli.py fixtures/research_briefs/jwst_canonical.json --render --validate
+```
+
+## Phase Status
 
 | Item | Status | Notes |
 |---|---|---|
 | ScenePlan generation from ResearchBrief | ✅ Working | Deterministic, no API keys needed |
+| Canonical fixture input path | ✅ Working | `fixtures/research_briefs/` with JWST canonical fixture |
+| Citation/provenance preservation | ✅ Working | `citation_refs` flow from findings → scenes; validated by tests |
 | Artifact validation against contract | ✅ Working | All 3 artifact types validated |
 | Placeholder MediaPackage | ✅ Working | Lists expected assets without rendering |
 | Bridge: ScenePlan → legacy Scene mapping | ✅ Working | `bridge_adapter.py` maps all fields correctly |
 | Bridge CLI (structured input path) | ✅ Working | Accepts ResearchBrief or ScenePlan, emits all artifacts |
 | Bridged MediaPackage with render metadata | ✅ Working | Records exactly where rendering was blocked |
+| Fixture-based integration tests | ✅ Working | 36 tests covering handoff, provenance, CLI pipeline |
 | Full video rendering from ScenePlan | ⚠️ API-gated | Requires `OPENAI_API_KEY` + `STABILITY_API_KEY`; pipeline stops at `content_generator_init` without them |
 | LLM-enhanced scene generation | ⚠️ Future | Could enhance scene narration/visuals via LLM |
 

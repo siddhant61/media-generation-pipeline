@@ -6,6 +6,7 @@ This is the core Phase 1 happy path for this repository.
 """
 
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -13,6 +14,8 @@ from typing import Any, Dict, List, Optional
 
 SCHEMA_VERSION = "1.0.0"
 PRODUCER = "media-generation-pipeline"
+
+FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures", "research_briefs")
 
 SCENE_PLAN_REQUIRED_FIELDS = [
     "artifact_type", "schema_version", "artifact_id", "created_at",
@@ -57,6 +60,44 @@ def load_research_brief(path: str) -> Dict[str, Any]:
         raise ValueError(f"ResearchBrief missing required fields: {missing}")
 
     return brief
+
+
+def list_research_brief_fixtures() -> List[str]:
+    """List available canonical ResearchBrief fixture names.
+
+    Returns:
+        List of fixture names (without .json extension) found in fixtures/research_briefs/.
+    """
+    if not os.path.isdir(FIXTURES_DIR):
+        return []
+    return [
+        f[:-5] for f in sorted(os.listdir(FIXTURES_DIR))
+        if f.endswith(".json")
+    ]
+
+
+def load_research_brief_fixture(name: str) -> Dict[str, Any]:
+    """Load a canonical ResearchBrief fixture by name.
+
+    Fixtures live in fixtures/research_briefs/ and represent canonical
+    outputs from content-research-pipeline. This provides a stable input
+    path that does not depend on free-form prompt-only behavior.
+
+    Args:
+        name: Fixture name (e.g. 'jwst_canonical'). The .json extension
+              is appended automatically if not present.
+
+    Returns:
+        A validated ResearchBrief dict.
+
+    Raises:
+        FileNotFoundError: If the fixture does not exist.
+        ValueError: If the fixture is not a valid ResearchBrief.
+    """
+    if not name.endswith(".json"):
+        name = f"{name}.json"
+    path = os.path.join(FIXTURES_DIR, name)
+    return load_research_brief(path)
 
 
 def generate_scene_plan(
