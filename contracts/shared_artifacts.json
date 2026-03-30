@@ -1,0 +1,277 @@
+{
+  "schema_version": "1.0.0",
+  "contract_name": "shared_artifacts",
+  "description": "Shared artifact contract for material-ingestion-pipeline, content-research-pipeline, and media-generation-pipeline.",
+  "artifact_flow": [
+    "RawSourceBundle",
+    "NormalizedDocumentSet",
+    "ChunkSet",
+    "KnowledgeGraphPackage",
+    "ResearchBrief",
+    "ScenePlan",
+    "MediaPackage"
+  ],
+  "artifacts": {
+    "RunManifest": {
+      "owned_by": [
+        "material-ingestion-pipeline",
+        "content-research-pipeline",
+        "media-generation-pipeline"
+      ],
+      "required_fields": [
+        "artifact_type",
+        "schema_version",
+        "artifact_id",
+        "created_at",
+        "producer",
+        "source_run_id",
+        "pipeline_name",
+        "pipeline_stage",
+        "status",
+        "inputs",
+        "outputs",
+        "metrics",
+        "errors"
+      ]
+    },
+    "RawSourceBundle": {
+      "owned_by": [
+        "material-ingestion-pipeline"
+      ],
+      "consumed_by": [
+        "material-ingestion-pipeline",
+        "content-research-pipeline"
+      ],
+      "required_fields": [
+        "artifact_type",
+        "schema_version",
+        "artifact_id",
+        "created_at",
+        "producer",
+        "source_run_id",
+        "topic",
+        "source_bundle_name",
+        "sources"
+      ],
+      "source_item_required_fields": [
+        "source_id",
+        "title",
+        "source_type",
+        "origin_org",
+        "url",
+        "local_path",
+        "mime_type",
+        "language",
+        "license",
+        "usage_notes",
+        "retrieved_at",
+        "checksum",
+        "tags"
+      ]
+    },
+    "NormalizedDocumentSet": {
+      "owned_by": [
+        "material-ingestion-pipeline"
+      ],
+      "consumed_by": [
+        "material-ingestion-pipeline",
+        "content-research-pipeline"
+      ],
+      "required_fields": [
+        "artifact_type",
+        "schema_version",
+        "artifact_id",
+        "created_at",
+        "producer",
+        "source_run_id",
+        "topic",
+        "documents"
+      ],
+      "document_required_fields": [
+        "document_id",
+        "source_id",
+        "title",
+        "document_type",
+        "language",
+        "text",
+        "sections",
+        "metadata"
+      ]
+    },
+    "ChunkSet": {
+      "owned_by": [
+        "material-ingestion-pipeline"
+      ],
+      "consumed_by": [
+        "material-ingestion-pipeline",
+        "content-research-pipeline"
+      ],
+      "required_fields": [
+        "artifact_type",
+        "schema_version",
+        "artifact_id",
+        "created_at",
+        "producer",
+        "source_run_id",
+        "topic",
+        "chunking_strategy",
+        "chunks"
+      ],
+      "chunk_required_fields": [
+        "chunk_id",
+        "document_id",
+        "source_id",
+        "text",
+        "token_count",
+        "char_count",
+        "embedding_model",
+        "embedding_vector_ref",
+        "metadata"
+      ]
+    },
+    "KnowledgeGraphPackage": {
+      "owned_by": [
+        "material-ingestion-pipeline"
+      ],
+      "consumed_by": [
+        "content-research-pipeline",
+        "media-generation-pipeline"
+      ],
+      "required_fields": [
+        "artifact_type",
+        "schema_version",
+        "artifact_id",
+        "created_at",
+        "producer",
+        "source_run_id",
+        "topic",
+        "graph_name",
+        "nodes",
+        "edges",
+        "embeddings_index",
+        "provenance"
+      ],
+      "node_required_fields": [
+        "node_id",
+        "label",
+        "node_type",
+        "description",
+        "aliases",
+        "attributes",
+        "source_refs"
+      ],
+      "edge_required_fields": [
+        "edge_id",
+        "source_node_id",
+        "target_node_id",
+        "relation_type",
+        "weight",
+        "evidence",
+        "source_refs"
+      ]
+    },
+    "ResearchBrief": {
+      "owned_by": [
+        "content-research-pipeline"
+      ],
+      "consumed_by": [
+        "media-generation-pipeline"
+      ],
+      "required_fields": [
+        "artifact_type",
+        "schema_version",
+        "artifact_id",
+        "created_at",
+        "producer",
+        "source_run_id",
+        "topic",
+        "research_question",
+        "executive_summary",
+        "key_findings",
+        "entities",
+        "timeline",
+        "source_index",
+        "citation_map",
+        "open_questions",
+        "recommended_angles"
+      ]
+    },
+    "ScenePlan": {
+      "owned_by": [
+        "media-generation-pipeline"
+      ],
+      "consumed_by": [
+        "media-generation-pipeline"
+      ],
+      "required_fields": [
+        "artifact_type",
+        "schema_version",
+        "artifact_id",
+        "created_at",
+        "producer",
+        "source_run_id",
+        "topic",
+        "narrative_goal",
+        "target_audience",
+        "style_profile",
+        "scenes"
+      ],
+      "scene_required_fields": [
+        "scene_id",
+        "title",
+        "purpose",
+        "narration",
+        "visual_brief",
+        "on_screen_text",
+        "entity_refs",
+        "citation_refs",
+        "duration_seconds",
+        "transition"
+      ]
+    },
+    "MediaPackage": {
+      "owned_by": [
+        "media-generation-pipeline"
+      ],
+      "consumed_by": [],
+      "required_fields": [
+        "artifact_type",
+        "schema_version",
+        "artifact_id",
+        "created_at",
+        "producer",
+        "source_run_id",
+        "topic",
+        "media_type",
+        "assets",
+        "render_manifest",
+        "attribution"
+      ],
+      "asset_required_fields": [
+        "asset_id",
+        "asset_type",
+        "title",
+        "local_path",
+        "mime_type",
+        "duration_seconds",
+        "resolution",
+        "source_scene_id",
+        "metadata"
+      ]
+    }
+  },
+  "compatibility_rules": {
+    "backward_compatible": [
+      "add optional fields",
+      "add new artifact types",
+      "expand enum values without changing existing values"
+    ],
+    "breaking_changes": [
+      "remove required fields",
+      "rename required fields",
+      "change artifact semantic meaning",
+      "change artifact type names"
+    ]
+  },
+  "filename_pattern": "<topic_slug>__<artifact_type>__<timestamp>.json"
+}
