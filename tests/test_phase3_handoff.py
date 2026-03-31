@@ -11,7 +11,7 @@ Validates:
  - invalid JSON in handoff_manifest.json raises ValueError
  - full end-to-end pipeline: handoff dir → ScenePlan → MediaPackage → RunManifest
  - stable outputs are written to outputs/<topic_slug>/ from a handoff_manifest.json package
- - HandoffManifest schema is defined in shared contracts
+ - HandoffManifest is NOT a shared artifact type (operational descriptor only)
 """
 
 import json
@@ -422,39 +422,25 @@ class TestPhase3EndToEnd:
 
 
 # ---------------------------------------------------------------------------
-# Contract: HandoffManifest schema is defined
+# Contract: HandoffManifest is NOT a shared artifact type
 # ---------------------------------------------------------------------------
 
 
-class TestHandoffManifestInContract:
-    """Validates that the HandoffManifest schema is present in shared contracts."""
+class TestHandoffManifestNotInContract:
+    """Validates that HandoffManifest is an operational descriptor, not a shared artifact."""
 
-    def test_handoff_manifest_in_contracts(self, contract):
-        assert "HandoffManifest" in contract.get("artifacts", {}), (
-            "HandoffManifest schema missing from contracts/shared_artifacts.json"
+    def test_handoff_manifest_not_in_shared_artifacts(self, contract):
+        """handoff_manifest.json is an operational package descriptor, not a formal
+        shared artifact type.  It must not appear in contracts/shared_artifacts.json."""
+        assert "HandoffManifest" not in contract.get("artifacts", {}), (
+            "HandoffManifest should not be in contracts/shared_artifacts.json — "
+            "it is an operational package descriptor, not a shared artifact type"
         )
 
-    def test_handoff_manifest_required_fields_in_contract(self, contract):
-        hm_contract = contract["artifacts"]["HandoffManifest"]
-        required = hm_contract.get("required_fields", [])
-        for field in [
-            "schema_version",
-            "handoff_type",
-            "source_pipeline",
-            "source_run_id",
-            "created_at",
-            "topic",
-            "primary_artifact",
-            "artifacts",
-        ]:
-            assert field in required, (
-                f"Field '{field}' missing from HandoffManifest required_fields"
-            )
-
-    def test_handoff_manifest_owned_by_content_research(self, contract):
-        hm_contract = contract["artifacts"]["HandoffManifest"]
-        assert "content-research-pipeline" in hm_contract.get("owned_by", [])
-
-    def test_handoff_manifest_consumed_by_media_generation(self, contract):
-        hm_contract = contract["artifacts"]["HandoffManifest"]
-        assert "media-generation-pipeline" in hm_contract.get("consumed_by", [])
+    def test_handoff_manifest_file_still_loads(self):
+        """Operational handoff_manifest.json loading still works even though it
+        is not a shared artifact type."""
+        manifest = load_handoff_manifest(DEMO_DIR)
+        assert manifest is not None
+        assert "primary_artifact" in manifest
+        assert "artifacts" in manifest
