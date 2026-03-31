@@ -414,23 +414,61 @@ python generate_scene_plan.py \
 
 ## GitHub Actions Workflow
 
-The `manual-generate-sceneplan.yml` workflow runs the canonical happy path (generate + validate) and uploads results as a GitHub Actions artifact.
+The `manual-generate-sceneplan.yml` workflow runs the canonical happy path (generate + validate) and uploads results as a GitHub Actions artifact.  It supports two modes:
 
-### Running manually
+### Mode 1: Manual local-fixture mode
 
 Trigger from the **Actions** tab → **Manual Generate ScenePlan** → **Run workflow**.
 
-### Calling as a reusable workflow
+In this mode (also the default for `workflow_dispatch`), the workflow uses the committed `demo_data/jwst_star_formation_early_universe_demo/` fixture as input.  This is useful for testing and demonstration without a full orchestration run.
 
-From another repository (e.g. `pipeline-integration`):
+### Mode 2: Orchestration real-artifact mode
+
+When called as a reusable workflow from an orchestration pipeline, the workflow can download a real downstream handoff artifact produced by an earlier job in the same run.
 
 ```yaml
 jobs:
-  generate:
+  # Stage 2 produces a handoff artifact named "research-brief-handoff"
+  stage2-research:
+    # ... (content-research-pipeline reusable workflow)
+
+  # Stage 3 consumes the handoff artifact
+  stage3-generate:
+    needs: stage2-research
     uses: siddhant61/media-generation-pipeline/.github/workflows/manual-generate-sceneplan.yml@main
+    with:
+      downstream_artifact_name: research-brief-handoff
+      upstream_run_id: ${{ needs.stage2-research.outputs.run_id }}
 ```
 
+#### Workflow inputs
+
+| Input | Type | Required | Description |
+|---|---|---|---|
+| `downstream_artifact_name` | string | No | Name of the handoff artifact to download from the same orchestration run. When empty, falls back to the committed demo fixture. |
+| `upstream_run_id` | string | No | Explicit upstream run ID for provenance tracking. Overrides the `source_run_id` from the downloaded `handoff_manifest.json`. |
+
+When `downstream_artifact_name` is provided, the workflow:
+1. Downloads the named artifact into `downloaded_handoff/` using `actions/download-artifact@v4`
+2. Uses that directory as the input to `generate_scene_plan.py` instead of the committed demo fixture
+3. Records the real input path and provenance in the RunManifest
+
+When `upstream_run_id` is also provided, it overrides the `source_run_id` from the downloaded `handoff_manifest.json` in the RunManifest.
+
 The workflow checks out `media-generation-pipeline` explicitly, so it works correctly when called from an external repository.
+
+### CLI provenance flag
+
+The `--upstream-run-id` flag on `generate_scene_plan.py` allows explicit provenance tracking:
+
+```bash
+# Orchestration mode: explicit upstream run ID
+python generate_scene_plan.py downloaded_handoff/ \
+  --media-package --stable-output --validate \
+  --upstream-run-id crp-run-abc123
+```
+
+When provided, the flag overrides the `handoff_source_run_id` in the RunManifest inputs.  Without it, the `source_run_id` from the handoff package's `handoff_manifest.json` is used.
 
 ### Artifacts
 
