@@ -1,11 +1,14 @@
 """
-Phase 2B: ResearchBrief Handoff Package loader and stable output emitter.
+Phase 2B / Phase 3: ResearchBrief Handoff Package loader and stable output emitter.
 
 Provides utilities for consuming the canonical ResearchBrief artifact emitted
 by content-research-pipeline, whether delivered as:
   - a bare ResearchBrief JSON file
   - a handoff directory containing a ResearchBrief plus a RunManifest and
     other artifacts (the format content-research-pipeline writes)
+  - a handoff directory containing a ``handoff_manifest.json`` that declares
+    the primary artifact and the full list of artifacts in the package
+    (Phase 3 canonical downstream handoff format)
 
 Also provides a helper to write ScenePlan / MediaPackage / RunManifest to
 the stable canonical output location:
@@ -33,18 +36,58 @@ STABLE_SCENE_PLAN_FILE = "ScenePlan.json"
 STABLE_MEDIA_PACKAGE_FILE = "MediaPackage.json"
 STABLE_RUN_MANIFEST_FILE = "RunManifest.json"
 
+#: Canonical handoff manifest filename emitted by content-research-pipeline.
+HANDOFF_MANIFEST_FILE = "handoff_manifest.json"
+
 
 # ---------------------------------------------------------------------------
-# Handoff package loading
+# Handoff manifest loading
 # ---------------------------------------------------------------------------
+
+
+def load_handoff_manifest(directory: str) -> Optional[Dict[str, Any]]:
+    """Load ``handoff_manifest.json`` from a handoff directory, if present.
+
+    The handoff manifest is a lightweight package index emitted by
+    ``content-research-pipeline`` alongside the primary artifact.  It
+    declares which file is the ``primary_artifact`` and lists all artifacts
+    included in the handoff package.
+
+    Args:
+        directory: Path to a directory that may contain a handoff manifest.
+
+    Returns:
+        The parsed manifest dict, or ``None`` if no
+        ``handoff_manifest.json`` file exists in the directory.
+
+    Raises:
+        ValueError: If ``handoff_manifest.json`` exists but cannot be
+            parsed as valid JSON.
+    """
+    manifest_path = os.path.join(directory, HANDOFF_MANIFEST_FILE)
+    if not os.path.isfile(manifest_path):
+        return None
+    try:
+        with open(manifest_path) as f:
+            return json.load(f)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Invalid JSON in {manifest_path}: {exc}"
+        ) from exc
 
 
 def find_research_brief_in_dir(directory: str) -> str:
     """Locate the ResearchBrief JSON file inside a handoff directory.
 
-    Looks for files that end with ``ResearchBrief.json``, contain
-    ``ResearchBrief`` in the filename (case-insensitive), or are the only
-    JSON file in the directory whose ``artifact_type`` is ``"ResearchBrief"``.
+    Search order:
+
+    1. **``handoff_manifest.json``** — if present, read ``primary_artifact``
+       and resolve to an absolute path.  This is the canonical Phase 3
+       format emitted by ``content-research-pipeline``.
+    2. **Filename pattern** — files ending with or containing
+       ``ResearchBrief`` (case-insensitive).
+    3. **Content inspection** — scan JSON files for
+       ``artifact_type == "ResearchBrief"``.
 
     Args:
         directory: Path to a directory produced by content-research-pipeline.
@@ -53,16 +96,30 @@ def find_research_brief_in_dir(directory: str) -> str:
         Absolute path to the ResearchBrief JSON file.
 
     Raises:
-        FileNotFoundError: If no ResearchBrief file can be found.
+        FileNotFoundError: If no ResearchBrief file can be found, or if the
+            primary artifact declared in the handoff manifest does not exist.
         ValueError: If multiple ambiguous candidates are found.
     """
     if not os.path.isdir(directory):
         raise FileNotFoundError(f"Not a directory: {directory}")
 
+    # Priority 0 — canonical Phase 3 handoff_manifest.json
+    handoff_manifest = load_handoff_manifest(directory)
+    if handoff_manifest is not None:
+        primary = handoff_manifest.get("primary_artifact")
+        if primary:
+            primary_path = os.path.join(directory, primary)
+            if not os.path.isfile(primary_path):
+                raise FileNotFoundError(
+                    f"handoff_manifest.json declares primary_artifact "
+                    f"'{primary}' but that file does not exist in {directory}"
+                )
+            return primary_path
+
     json_files = [
         os.path.join(directory, f)
         for f in os.listdir(directory)
-        if f.endswith(".json")
+        if f.endswith(".json") and f != HANDOFF_MANIFEST_FILE
     ]
 
     # Priority 1 — exact naming conventions used by content-research-pipeline
@@ -111,6 +168,13 @@ def load_handoff_package(path: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         - A path to a ResearchBrief JSON file.
         - A path to a handoff directory that contains a ResearchBrief JSON
           file (with optional sibling RunManifest, sources/, etc.).
+        - A path to a handoff directory that contains a ``handoff_manifest.json``
+          (canonical Phase 3 format from content-research-pipeline).
+
+    When a ``handoff_manifest.json`` is present the ``package_meta`` dict
+    includes its contents under the ``"handoff_manifest"`` key, giving
+    callers access to the full package index including ``source_run_id``,
+    ``topic``, and the declared artifact list.
 
     Args:
         path: Path to a ResearchBrief JSON file or a handoff directory.
@@ -118,8 +182,14 @@ def load_handoff_package(path: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     Returns:
         A tuple ``(brief, package_meta)`` where:
           - ``brief`` is a validated ResearchBrief dict.
-          - ``package_meta`` is a dict describing the handoff package:
-            ``{"source_path": str, "brief_path": str, "sibling_files": List[str]}``.
+          - ``package_meta`` is a dict describing the handoff package::
+
+              {
+                "source_path": str,
+                "brief_path": str,
+                "sibling_files": List[str],
+                "handoff_manifest": Dict | None,  # Phase 3: manifest contents
+              }
 
     Raises:
         FileNotFoundError: If the path does not exist or no ResearchBrief
@@ -129,11 +199,16 @@ def load_handoff_package(path: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     if not os.path.exists(path):
         raise FileNotFoundError(f"Path not found: {path}")
 
+    handoff_manifest: Optional[Dict[str, Any]] = None
+
     if os.path.isdir(path):
+        handoff_manifest = load_handoff_manifest(path)
         brief_path = find_research_brief_in_dir(path)
         sibling_files = [
             f for f in os.listdir(path)
-            if f.endswith(".json") and os.path.join(path, f) != brief_path
+            if f.endswith(".json")
+            and os.path.join(path, f) != brief_path
+            and f != HANDOFF_MANIFEST_FILE
         ]
     else:
         brief_path = path
@@ -145,6 +220,7 @@ def load_handoff_package(path: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         "source_path": path,
         "brief_path": brief_path,
         "sibling_files": sorted(sibling_files),
+        "handoff_manifest": handoff_manifest,
     }
 
     return brief, package_meta
