@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 1 / Phase 2B Happy Path: Generate a ScenePlan from a ResearchBrief.
+Phase 1 / Phase 2B / Phase 4 Happy Path: Generate a ScenePlan from a ResearchBrief.
 
 Usage:
     # Handoff directory (auto-detects the ResearchBrief via handoff_manifest.json)
@@ -12,12 +12,16 @@ Usage:
     # Canonical fixture from content-research-pipeline
     python generate_scene_plan.py fixtures/research_briefs/jwst_canonical.json
 
+    # Phase 4: orchestration mode — downloaded handoff artifact with explicit run ID
+    python generate_scene_plan.py downloaded_handoff/ --upstream-run-id crp-run-abc123
+
 Options:
-    --output-dir DIR     Directory for output artifacts (default: generated_artifacts/)
-    --stable-output      Write canonical outputs to outputs/<topic_slug>/ (stable, no timestamps)
-    --media-package      Also generate a placeholder MediaPackage
-    --validate           Validate all outputs against the shared contract
-    --quiet              Suppress progress output
+    --output-dir DIR         Directory for output artifacts (default: generated_artifacts/)
+    --stable-output          Write canonical outputs to outputs/<topic_slug>/ (stable, no timestamps)
+    --media-package          Also generate a placeholder MediaPackage
+    --validate               Validate all outputs against the shared contract
+    --quiet                  Suppress progress output
+    --upstream-run-id ID     Explicit upstream run ID for provenance (overrides handoff_manifest)
 """
 
 import argparse
@@ -88,6 +92,16 @@ def main() -> int:
         action="store_true",
         help="Suppress progress output",
     )
+    parser.add_argument(
+        "--upstream-run-id",
+        default=None,
+        help=(
+            "Explicit upstream run ID for provenance tracking. "
+            "Overrides the source_run_id from the handoff_manifest.json "
+            "when provided (used by orchestration workflows to record "
+            "the real Stage 2 run ID)."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -149,6 +163,10 @@ def main() -> int:
             inputs_dict["handoff_source_pipeline"] = hm["source_pipeline"]
         if hm.get("source_run_id"):
             inputs_dict["handoff_source_run_id"] = hm["source_run_id"]
+
+    # Explicit upstream run ID overrides the handoff_manifest's source_run_id
+    if args.upstream_run_id:
+        inputs_dict["handoff_source_run_id"] = args.upstream_run_id
 
     manifest = create_run_manifest(
         pipeline_stage="scene_plan_generation",

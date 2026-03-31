@@ -3,6 +3,25 @@ name: Manual Generate ScenePlan
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      downstream_artifact_name:
+        description: >
+          Name of the downstream handoff artifact to download from an earlier
+          job in the same orchestration run.  When provided, the workflow
+          downloads this artifact and uses it as the input handoff directory
+          instead of the committed demo_data fixture.
+        required: false
+        type: string
+        default: ''
+      upstream_run_id:
+        description: >
+          Explicit upstream run ID for provenance tracking.  Recorded in the
+          RunManifest as handoff_source_run_id when provided, supplementing
+          (or overriding) the source_run_id found in the downloaded
+          handoff_manifest.json.
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -27,11 +46,37 @@ jobs:
           # The non-API-gated handoff path uses only Python stdlib modules.
           # No external pip packages are required for stable output generation.
 
-      - name: Generate stable outputs from canonical handoff fixture
+      - name: Download downstream handoff artifact
+        if: inputs.downstream_artifact_name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.downstream_artifact_name }}
+          path: downloaded_handoff/
+
+      - name: Determine input path and mode
+        id: resolve-input
         run: |
+          if [ -d "downloaded_handoff" ] && [ "$(ls -A downloaded_handoff 2>/dev/null)" ]; then
+            echo "input_path=downloaded_handoff" >> "$GITHUB_OUTPUT"
+            echo "mode=orchestration" >> "$GITHUB_OUTPUT"
+            echo "::notice ::Using downloaded handoff artifact as input (orchestration mode)"
+            ls -la downloaded_handoff/
+          else
+            echo "input_path=demo_data/jwst_star_formation_early_universe_demo/" >> "$GITHUB_OUTPUT"
+            echo "mode=fixture" >> "$GITHUB_OUTPUT"
+            echo "::notice ::Using committed demo fixture as input (manual mode)"
+          fi
+
+      - name: Generate stable outputs
+        run: |
+          EXTRA_ARGS=""
+          if [ -n "${{ inputs.upstream_run_id }}" ]; then
+            EXTRA_ARGS="--upstream-run-id ${{ inputs.upstream_run_id }}"
+          fi
           python generate_scene_plan.py \
-            demo_data/jwst_star_formation_early_universe_demo/ \
-            --media-package --stable-output --validate
+            "${{ steps.resolve-input.outputs.input_path }}" \
+            --media-package --stable-output --validate \
+            $EXTRA_ARGS
 
       - name: Validate ScenePlan, MediaPackage, and RunManifest
         run: |
@@ -41,6 +86,7 @@ jobs:
             exit 1
           fi
           echo "Validating artifacts in: $OUTPUT_DIR"
+          echo "Mode: ${{ steps.resolve-input.outputs.mode }}"
           python validate_artifacts.py "$OUTPUT_DIR"
 
       - name: Upload outputs
