@@ -5,16 +5,16 @@ contract-aligned ScenePlan path *and* the legacy rendering pipeline.
 
 Usage:
     # From a ResearchBrief (generates ScenePlan first, then bridges)
-    python bridge_cli.py demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json
+    python bridge_cli.py demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.json
 
     # From an existing ScenePlan
     python bridge_cli.py generated_artifacts/my__ScenePlan__20260330.json --scene-plan
 
     # Dry-run (bridge + validate, skip rendering)
-    python bridge_cli.py ResearchBrief.sample.json --dry-run --validate
+    python bridge_cli.py ResearchBrief.json --dry-run --validate
 
     # Full render attempt
-    python bridge_cli.py ResearchBrief.sample.json --render --validate
+    python bridge_cli.py ResearchBrief.json --render --validate
 """
 
 import argparse

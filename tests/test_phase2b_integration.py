@@ -55,6 +55,7 @@ DEMO_DIR = os.path.join(
     REPO_ROOT, "demo_data", "jwst_star_formation_early_universe_demo"
 )
 DEMO_BRIEF_FILE = os.path.join(DEMO_DIR, "ResearchBrief.sample.json")
+DEMO_HANDOFF_BRIEF_FILE = os.path.join(DEMO_DIR, "ResearchBrief.json")
 
 FIXTURE_FILE = os.path.join(
     REPO_ROOT, "fixtures", "research_briefs", "jwst_canonical.json"
@@ -174,7 +175,7 @@ class TestHandoffPackageLoading:
     def test_load_from_directory_package_meta(self):
         _, meta = load_handoff_package(DEMO_DIR)
         assert meta["source_path"] == DEMO_DIR
-        assert DEMO_BRIEF_FILE == meta["brief_path"]
+        assert DEMO_HANDOFF_BRIEF_FILE == meta["brief_path"]
         # The demo directory contains other JSON files
         assert isinstance(meta["sibling_files"], list)
 

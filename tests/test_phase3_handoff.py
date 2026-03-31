@@ -444,3 +444,155 @@ class TestHandoffManifestNotInContract:
         assert manifest is not None
         assert "primary_artifact" in manifest
         assert "artifacts" in manifest
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.5: Real downstream handoff artifact consumption
+# ---------------------------------------------------------------------------
+
+
+class TestRealDownstreamHandoff:
+    """Phase 3.5 tests: the canonical handoff flow must consume the real
+    downstream ResearchBrief artifact (ResearchBrief.json) rather than the
+    local sample file (ResearchBrief.sample.json)."""
+
+    REAL_BRIEF_FILE = os.path.join(DEMO_DIR, "ResearchBrief.json")
+    SAMPLE_BRIEF_FILE = os.path.join(DEMO_DIR, "ResearchBrief.sample.json")
+
+    def test_real_handoff_brief_exists(self):
+        """The real downstream ResearchBrief.json must exist in the demo handoff dir."""
+        assert os.path.isfile(self.REAL_BRIEF_FILE), (
+            "ResearchBrief.json (real downstream artifact) is missing from demo_data"
+        )
+
+    def test_handoff_manifest_points_to_real_brief(self):
+        """handoff_manifest.json primary_artifact must point to ResearchBrief.json,
+        not the sample file."""
+        manifest = load_handoff_manifest(DEMO_DIR)
+        assert manifest is not None
+        assert manifest["primary_artifact"] == "ResearchBrief.json", (
+            f"primary_artifact should be 'ResearchBrief.json', "
+            f"got '{manifest['primary_artifact']}'"
+        )
+
+    def test_directory_load_resolves_to_real_brief(self):
+        """Loading via the handoff directory must resolve to ResearchBrief.json."""
+        brief_path = find_research_brief_in_dir(DEMO_DIR)
+        assert brief_path.endswith("ResearchBrief.json"), (
+            f"Expected ResearchBrief.json, got {os.path.basename(brief_path)}"
+        )
+        assert not brief_path.endswith("ResearchBrief.sample.json"), (
+            "Handoff directory should resolve to the real artifact, not the sample"
+        )
+
+    def test_package_meta_brief_path_is_real_artifact(self):
+        """package_meta['brief_path'] must point to the real downstream artifact."""
+        _, meta = load_handoff_package(DEMO_DIR)
+        assert meta["brief_path"].endswith("ResearchBrief.json")
+        assert not meta["brief_path"].endswith("ResearchBrief.sample.json")
+
+    def test_real_brief_has_proper_source_run_id(self):
+        """The real downstream artifact must have source_run_id matching
+        the handoff_manifest, not the bootstrap placeholder."""
+        brief, _ = load_handoff_package(DEMO_DIR)
+        assert brief["source_run_id"] != "bootstrap", (
+            "Real downstream artifact should not have source_run_id='bootstrap'"
+        )
+        manifest = load_handoff_manifest(DEMO_DIR)
+        assert brief["source_run_id"] == manifest["source_run_id"], (
+            f"ResearchBrief.source_run_id ({brief['source_run_id']}) must match "
+            f"handoff_manifest.source_run_id ({manifest['source_run_id']})"
+        )
+
+    def test_real_brief_has_proper_artifact_id(self):
+        """The real downstream artifact must not use the sample placeholder artifact_id."""
+        brief, _ = load_handoff_package(DEMO_DIR)
+        assert brief["artifact_id"] != "sample-research-brief", (
+            "Real downstream artifact should not use 'sample-research-brief' artifact_id"
+        )
+
+    def test_real_brief_preserves_citation_refs(self):
+        """Citation refs in the real downstream artifact must be present."""
+        brief, _ = load_handoff_package(DEMO_DIR)
+        all_citation_refs = set()
+        for finding in brief["key_findings"]:
+            all_citation_refs.update(finding.get("citation_refs", []))
+        assert len(all_citation_refs) > 0, "No citation_refs found in key_findings"
+        # Verify they reference valid sources
+        source_ids = {s["source_id"] for s in brief["source_index"]}
+        for ref in all_citation_refs:
+            assert ref in source_ids, (
+                f"citation_ref '{ref}' not found in source_index"
+            )
+
+    def test_real_brief_preserves_entity_refs(self):
+        """Entity labels in the real downstream artifact must be present."""
+        brief, _ = load_handoff_package(DEMO_DIR)
+        assert len(brief["entities"]) > 0, "No entities found in the real brief"
+        for entity in brief["entities"]:
+            assert "label" in entity
+            assert "type" in entity
+
+    def test_scene_plan_citation_refs_from_real_brief(self):
+        """ScenePlan generated from the real brief must carry citation_refs forward."""
+        brief, _ = load_handoff_package(DEMO_DIR)
+        scene_plan = generate_scene_plan(brief)
+        # At least one scene should have citation_refs from source_index
+        source_ids = {s["source_id"] for s in brief["source_index"]}
+        found_refs = set()
+        for scene in scene_plan["scenes"]:
+            found_refs.update(scene.get("citation_refs", []))
+        assert found_refs & source_ids, (
+            "ScenePlan scenes should carry citation_refs from the ResearchBrief source_index"
+        )
+
+    def test_scene_plan_entity_refs_from_real_brief(self):
+        """ScenePlan generated from the real brief must carry entity_refs forward."""
+        brief, _ = load_handoff_package(DEMO_DIR)
+        scene_plan = generate_scene_plan(brief)
+        entity_labels = {e["label"] for e in brief["entities"]}
+        found_refs = set()
+        for scene in scene_plan["scenes"]:
+            found_refs.update(scene.get("entity_refs", []))
+        assert found_refs & entity_labels, (
+            "ScenePlan scenes should carry entity_refs from the ResearchBrief entities"
+        )
+
+    def test_run_manifest_records_real_handoff_input(self, tmp_path):
+        """RunManifest inputs must record the real handoff artifact path,
+        not the sample file path."""
+        brief, meta = load_handoff_package(DEMO_DIR)
+        scene_plan = generate_scene_plan(brief)
+
+        # Build inputs as generate_scene_plan.py does
+        inputs_dict = {"research_brief": meta["brief_path"]}
+        if meta.get("handoff_manifest"):
+            hm = meta["handoff_manifest"]
+            if hm.get("source_pipeline"):
+                inputs_dict["handoff_source_pipeline"] = hm["source_pipeline"]
+            if hm.get("source_run_id"):
+                inputs_dict["handoff_source_run_id"] = hm["source_run_id"]
+
+        manifest = create_run_manifest(
+            pipeline_stage="scene_plan_generation",
+            status="complete",
+            inputs=inputs_dict,
+            outputs=[],
+            metrics={"num_scenes": len(scene_plan["scenes"])},
+            source_run_id=scene_plan["source_run_id"],
+        )
+
+        # Assert real file, not sample
+        assert "ResearchBrief.json" in manifest["inputs"]["research_brief"]
+        assert "ResearchBrief.sample.json" not in manifest["inputs"]["research_brief"]
+
+        # Assert handoff identity metadata
+        assert manifest["inputs"]["handoff_source_pipeline"] == "content-research-pipeline"
+        assert manifest["inputs"]["handoff_source_run_id"] == "crp-run-jwst-demo"
+
+    def test_sample_file_still_exists_as_legacy(self):
+        """ResearchBrief.sample.json should still exist for backward compatibility,
+        but the handoff flow should not resolve to it."""
+        assert os.path.isfile(self.SAMPLE_BRIEF_FILE), (
+            "ResearchBrief.sample.json should remain for backward compatibility"
+        )
