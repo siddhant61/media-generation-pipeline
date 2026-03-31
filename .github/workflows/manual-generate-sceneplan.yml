@@ -1,0 +1,48 @@
+name: Manual Generate ScenePlan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-sceneplan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install minimum dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # The non-API-gated handoff path uses only Python stdlib modules.
+          # No external pip packages are required for stable output generation.
+
+      - name: Generate stable outputs from canonical handoff fixture
+        run: |
+          python generate_scene_plan.py \
+            demo_data/jwst_star_formation_early_universe_demo/ \
+            --media-package --stable-output --validate
+
+      - name: Validate ScenePlan, MediaPackage, and RunManifest
+        run: |
+          OUTPUT_DIR=$(find outputs/ -mindepth 1 -maxdepth 1 -type d | head -1)
+          if [ -z "$OUTPUT_DIR" ] || [ ! -d "$OUTPUT_DIR" ]; then
+            echo "ERROR: No output directory found under outputs/" >&2
+            exit 1
+          fi
+          echo "Validating artifacts in: $OUTPUT_DIR"
+          python validate_artifacts.py "$OUTPUT_DIR"
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scene-plan-outputs
+          path: outputs/
+          if-no-files-found: warn
