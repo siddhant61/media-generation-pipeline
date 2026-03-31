@@ -412,6 +412,34 @@ python generate_scene_plan.py \
   --media-package --validate
 ```
 
+## GitHub Actions Workflow
+
+The `manual-generate-sceneplan.yml` workflow runs the canonical happy path (generate + validate) and uploads results as a GitHub Actions artifact.
+
+### Running manually
+
+Trigger from the **Actions** tab → **Manual Generate ScenePlan** → **Run workflow**.
+
+### Calling as a reusable workflow
+
+From another repository (e.g. `pipeline-integration`):
+
+```yaml
+jobs:
+  generate:
+    uses: siddhant61/media-generation-pipeline/.github/workflows/manual-generate-sceneplan.yml@main
+```
+
+The workflow checks out `media-generation-pipeline` explicitly, so it works correctly when called from an external repository.
+
+### Artifacts
+
+| Artifact name | Contents | Path inside artifact |
+|---|---|---|
+| `scene-plan-outputs` | ScenePlan, MediaPackage, RunManifest | `outputs/<topic_slug>/` |
+
+The output directory follows the pattern `outputs/<topic_slug>/` (e.g. `outputs/jwst_star_formation_early_universe_demo/`).
+
 ## Legacy Pipeline (Full Rendering)
 
 The legacy pipeline generates full video content from a topic string using external APIs. This requires API keys and is not yet integrated with the structured artifact workflow.
