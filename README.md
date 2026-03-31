@@ -14,6 +14,39 @@ This repo is part of a coordinated multi-repo system:
 
 Shared contracts are defined in [`contracts/shared_artifacts.json`](contracts/shared_artifacts.json) and [`contracts/schemas.md`](contracts/schemas.md).
 
+## Phase 3 Happy Path: Canonical Downstream Handoff Consumer
+
+This repository is the **authoritative downstream consumer** in the 3-repo chain.  It consumes the canonical handoff package emitted by `content-research-pipeline` — including the `handoff_manifest.json` package index — and produces stable, contract-valid outputs in `outputs/<topic_slug>/`.
+
+```bash
+# Phase 3: consume a full handoff package (with handoff_manifest.json) and emit stable outputs
+python generate_scene_plan.py \
+  demo_data/jwst_star_formation_early_universe_demo/ \
+  --media-package --stable-output --validate
+```
+
+The `handoff_manifest.json` in the directory is the canonical package index from `content-research-pipeline`.  It declares which file is the primary artifact (`primary_artifact` field) and lists all artifacts in the package.  The handoff loader uses it as Priority 0 to locate the `ResearchBrief` — before falling back to filename heuristics.
+
+### Canonical handoff package structure
+
+```
+handoff_package/
+├── handoff_manifest.json       ← package index (Priority 0 for ResearchBrief detection)
+├── ResearchBrief.json          ← primary artifact declared in handoff_manifest.json
+└── RunManifest.json            ← optional upstream run tracking artifact
+```
+
+### Stable outputs produced
+
+```
+outputs/<topic_slug>/
+├── ScenePlan.json
+├── MediaPackage.json
+└── RunManifest.json
+```
+
+---
+
 ## Phase 1 / Phase 2B Happy Path
 
 The primary workflow reads a structured `ResearchBrief` and produces a contract-valid `ScenePlan`, placeholder `MediaPackage`, and `RunManifest`. In Phase 2B the input can be a bare JSON file or a **handoff directory** (the format `content-research-pipeline` writes), and outputs can be written to a **stable location** (`outputs/<topic_slug>/`).
@@ -125,6 +158,7 @@ python validate_artifacts.py outputs/jwst_star_formation_early_universe_demo/
 ```python
 from research_brief_handoff import (
     load_handoff_package,
+    load_handoff_manifest,
     emit_stable_outputs,
     list_stable_outputs,
 )
@@ -135,6 +169,12 @@ from run_manifest_writer import create_run_manifest
 # Load from a file or a handoff directory
 brief, meta = load_handoff_package("fixtures/research_briefs/jwst_canonical.json")
 brief, meta = load_handoff_package("demo_data/jwst_star_formation_early_universe_demo/")
+
+# Phase 3: meta["handoff_manifest"] is populated when handoff_manifest.json is present
+hm = meta["handoff_manifest"]   # dict | None
+if hm:
+    print(hm["source_run_id"])  # upstream run ID from content-research-pipeline
+    print(hm["artifacts"])      # list of all artifacts in the handoff package
 
 # Generate canonical artifacts
 plan = generate_scene_plan(brief)
@@ -313,7 +353,8 @@ media-generation-pipeline/
 │   ├── test_scene_plan_generator.py       # Phase 1 happy path tests (41 tests)
 │   ├── test_bridge.py                     # Phase 1.5 bridge tests (25 tests)
 │   ├── test_research_brief_handoff.py     # Phase 2A fixture handoff tests (36 tests)
-│   ├── test_phase2b_integration.py        # Phase 2B integration tests (45 tests)
+│   ├── test_phase2b_integration.py        # Phase 2B integration tests (52 tests)
+│   ├── test_phase3_handoff.py             # Phase 3 canonical consumer tests (34 tests)
 │   ├── test_pipeline.py                   # Legacy pipeline tests
 │   ├── test_api.py                        # API endpoint tests
 │   ├── test_api_security.py               # Security tests
@@ -445,8 +486,11 @@ python bridge_cli.py fixtures/research_briefs/jwst_canonical.json --render --val
 | Fixture-based integration tests | ✅ Working | 36 tests covering handoff, provenance, CLI pipeline |
 | **Handoff package loader** | ✅ Working (Phase 2B) | `research_brief_handoff.py` — file or directory input |
 | **Stable output location** | ✅ Working (Phase 2B) | `outputs/<topic_slug>/` with fixed filenames |
-| **Phase 2B integration tests** | ✅ Working (Phase 2B) | 45 tests covering handoff, stable output, end-to-end |
+| **Phase 2B integration tests** | ✅ Working (Phase 2B) | 52 tests covering handoff, stable output, end-to-end |
 | **CLI directory input** | ✅ Working (Phase 2B) | `generate_scene_plan.py <directory> --stable-output` |
+| **`handoff_manifest.json` consumption** | ✅ Working (Phase 3) | Priority 0 in `find_research_brief_in_dir()`; `package_meta["handoff_manifest"]` populated |
+| **HandoffManifest contract schema** | ✅ Working (Phase 3) | Defined in `contracts/shared_artifacts.json` |
+| **Phase 3 canonical consumer tests** | ✅ Working (Phase 3) | 34 tests: manifest loading, priority-0 detection, end-to-end, contract |
 | Full video rendering from ScenePlan | ⚠️ API-gated | Requires `OPENAI_API_KEY` + `STABILITY_API_KEY`; pipeline stops at `content_generator_init` without them |
 | LLM-enhanced scene generation | ⚠️ Future | Could enhance scene narration/visuals via LLM |
 
