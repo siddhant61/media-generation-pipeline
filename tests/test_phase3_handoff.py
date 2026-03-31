@@ -583,12 +583,14 @@ class TestRealDownstreamHandoff:
         )
 
         # Assert real file, not sample
-        assert "ResearchBrief.json" in manifest["inputs"]["research_brief"]
-        assert "ResearchBrief.sample.json" not in manifest["inputs"]["research_brief"]
+        rb_path = manifest["inputs"]["research_brief"]
+        assert os.path.basename(rb_path) == "ResearchBrief.json"
+        assert not rb_path.endswith("ResearchBrief.sample.json")
 
-        # Assert handoff identity metadata
-        assert manifest["inputs"]["handoff_source_pipeline"] == "content-research-pipeline"
-        assert manifest["inputs"]["handoff_source_run_id"] == "crp-run-jwst-demo"
+        # Assert handoff identity metadata matches manifest
+        hm = meta["handoff_manifest"]
+        assert manifest["inputs"]["handoff_source_pipeline"] == hm["source_pipeline"]
+        assert manifest["inputs"]["handoff_source_run_id"] == hm["source_run_id"]
 
     def test_sample_file_still_exists_as_legacy(self):
         """ResearchBrief.sample.json should still exist for backward compatibility,
