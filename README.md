@@ -14,12 +14,12 @@ This repo is part of a coordinated multi-repo system:
 
 Shared contracts are defined in [`contracts/shared_artifacts.json`](contracts/shared_artifacts.json) and [`contracts/schemas.md`](contracts/schemas.md).
 
-## Phase 1 Happy Path
+## Phase 1 / Phase 2B Happy Path
 
-The primary Phase 1 workflow reads a structured `ResearchBrief` and produces a contract-valid `ScenePlan`:
+The primary workflow reads a structured `ResearchBrief` and produces a contract-valid `ScenePlan`, placeholder `MediaPackage`, and `RunManifest`. In Phase 2B the input can be a bare JSON file or a **handoff directory** (the format `content-research-pipeline` writes), and outputs can be written to a **stable location** (`outputs/<topic_slug>/`).
 
 ```bash
-# Generate a ScenePlan from the canonical JWST demo ResearchBrief
+# Generate a ScenePlan from the canonical JWST demo ResearchBrief (file)
 python generate_scene_plan.py \
   demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
   --validate
@@ -34,8 +34,16 @@ python generate_scene_plan.py \
   fixtures/research_briefs/jwst_canonical.json \
   --media-package --validate
 
+# Phase 2B: load from a handoff directory + write to stable output location
+python generate_scene_plan.py \
+  demo_data/jwst_star_formation_early_universe_demo/ \
+  --media-package --stable-output --validate
+
 # Validate any artifact against the shared contract
 python validate_artifacts.py generated_artifacts/
+
+# Validate stable canonical outputs
+python validate_artifacts.py outputs/jwst_star_formation_early_universe_demo/
 ```
 
 ### Canonical ResearchBrief Fixtures
@@ -60,6 +68,120 @@ ResearchBrief.source_index[].source_id
     → ResearchBrief.key_findings[].citation_refs[]
     → ScenePlan.scenes[].citation_refs[]
 ```
+
+## Phase 2B Happy Path: Canonical ResearchBrief Handoff
+
+Phase 2B adds a dedicated **handoff loader** that consumes the canonical
+`ResearchBrief` artifact emitted by `content-research-pipeline` — whether
+delivered as a bare JSON file or as a structured handoff directory — and
+writes all outputs to a **stable, documented location**.
+
+### Upstream input expected
+
+| Input | Location | Description |
+|---|---|---|
+| `ResearchBrief` JSON file | `fixtures/research_briefs/jwst_canonical.json` | Canonical fixture (simulates content-research-pipeline output) |
+| Handoff directory | `demo_data/jwst_star_formation_early_universe_demo/` | Directory with ResearchBrief + sibling artifacts |
+
+The `ResearchBrief` must have `"producer": "content-research-pipeline"` and
+satisfy all `required_fields` defined in `contracts/shared_artifacts.json`.
+
+### Canonical outputs produced
+
+| Artifact | Stable path | Description |
+|---|---|---|
+| `ScenePlan` | `outputs/<topic_slug>/ScenePlan.json` | Contract-valid scene plan from research brief |
+| `MediaPackage` | `outputs/<topic_slug>/MediaPackage.json` | Placeholder MediaPackage listing expected assets |
+| `RunManifest` | `outputs/<topic_slug>/RunManifest.json` | Pipeline run tracking artifact |
+
+The JWST demo stable outputs live at:
+
+```
+outputs/jwst_star_formation_early_universe_demo/
+├── ScenePlan.json
+├── MediaPackage.json
+└── RunManifest.json
+```
+
+### Phase 2B happy path commands
+
+```bash
+# Load from a bare ResearchBrief file + write to stable output
+python generate_scene_plan.py \
+  fixtures/research_briefs/jwst_canonical.json \
+  --media-package --stable-output --validate
+
+# Load from a handoff directory (auto-detects ResearchBrief)
+python generate_scene_plan.py \
+  demo_data/jwst_star_formation_early_universe_demo/ \
+  --media-package --stable-output --validate
+
+# Validate the stable canonical outputs
+python validate_artifacts.py outputs/jwst_star_formation_early_universe_demo/
+```
+
+### Handoff loader API
+
+```python
+from research_brief_handoff import (
+    load_handoff_package,
+    emit_stable_outputs,
+    list_stable_outputs,
+)
+from scene_plan_generator import generate_scene_plan
+from media_package_writer import create_media_package
+from run_manifest_writer import create_run_manifest
+
+# Load from a file or a handoff directory
+brief, meta = load_handoff_package("fixtures/research_briefs/jwst_canonical.json")
+brief, meta = load_handoff_package("demo_data/jwst_star_formation_early_universe_demo/")
+
+# Generate canonical artifacts
+plan = generate_scene_plan(brief)
+pkg  = create_media_package(plan, rendered=False)
+manifest = create_run_manifest(
+    pipeline_stage="scene_plan_generation",
+    status="complete",
+    inputs={"research_brief": meta["brief_path"]},
+    outputs=[],
+    metrics={"num_scenes": len(plan["scenes"])},
+    source_run_id=plan["source_run_id"],
+)
+
+# Write to stable output location (outputs/<topic_slug>/)
+paths = emit_stable_outputs(plan, pkg, manifest)
+# → {"ScenePlan": "outputs/.../ScenePlan.json", ...}
+
+# Check what stable outputs exist
+found = list_stable_outputs("jwst_star_formation_early_universe_demo")
+```
+
+### Provenance chain (Phase 2B)
+
+Citation and entity references are preserved end-to-end through the handoff:
+
+```
+ResearchBrief.source_index[].source_id          # canonical source IDs from content-research-pipeline
+    → ResearchBrief.key_findings[].citation_refs[] # per-finding citations
+    → ScenePlan.scenes[].citation_refs[]            # carried into each scene
+
+ResearchBrief.entities[].label                   # entity labels
+    → ScenePlan.scenes[].entity_refs[]              # carried into each scene
+```
+
+### What remains API-gated
+
+Full rendering (images, audio, video assembly) requires API keys. Without them
+the pipeline emits a **placeholder MediaPackage** documenting the expected
+assets without actual files.
+
+| Path | Status |
+|---|---|
+| `ResearchBrief` → `ScenePlan` | ✅ No API keys needed |
+| `ScenePlan` → placeholder `MediaPackage` | ✅ No API keys needed |
+| `ScenePlan` → rendered images | ⚠️ Requires `STABILITY_API_KEY` |
+| `ScenePlan` → TTS audio | ⚠️ Requires `OPENAI_API_KEY` |
+| `ScenePlan` → assembled video | ⚠️ Requires both keys above |
 
 ## Phase 1.5 Bridge: ScenePlan → Legacy Rendering
 
@@ -151,18 +273,24 @@ media-generation-pipeline/
 ├── fixtures/                   # Canonical input fixtures
 │   └── research_briefs/        # ResearchBrief fixtures from content-research-pipeline
 │       └── jwst_canonical.json # Canonical JWST demo fixture
-├── demo_data/                  # Canonical demo scaffold
+├── demo_data/                  # Canonical demo scaffold (handoff directory example)
 │   └── jwst_star_formation_early_universe_demo/
-│       ├── ResearchBrief.sample.json   # Populated JWST research brief
+│       ├── ResearchBrief.sample.json   # Populated JWST research brief (upstream handoff)
 │       ├── ScenePlan.sample.json       # Reference scene plan
 │       ├── RunManifest.sample.json     # Reference run manifest
 │       └── manifest.json               # RawSourceBundle
+├── outputs/                    # Stable canonical outputs (per-topic, no timestamps)
+│   └── jwst_star_formation_early_universe_demo/
+│       ├── ScenePlan.json      # Canonical ScenePlan output
+│       ├── MediaPackage.json   # Canonical placeholder MediaPackage output
+│       └── RunManifest.json    # Canonical RunManifest output
 │
-│── Phase 1 modules (structured input → artifact output)
+│── Phase 1 / Phase 2B modules (structured input → artifact output)
 ├── scene_plan_generator.py     # ResearchBrief → ScenePlan (core Phase 1)
+├── research_brief_handoff.py   # Phase 2B: handoff loader + stable output emitter
 ├── media_package_writer.py     # ScenePlan → placeholder MediaPackage
 ├── run_manifest_writer.py      # RunManifest generation
-├── generate_scene_plan.py      # CLI entrypoint for Phase 1 happy path
+├── generate_scene_plan.py      # CLI: file or handoff dir → ScenePlan (+ --stable-output)
 ├── validate_artifacts.py       # Validate artifacts against shared contract
 │
 │── Phase 1.5 bridge (ScenePlan → legacy rendering pipeline)
@@ -181,10 +309,11 @@ media-generation-pipeline/
 ├── services/                   # Production services
 │   └── job_store.py            # Redis-based job persistence
 ├── ui/                         # Web UI for video generation
-├── tests/                      # Test suite (151 tests)
+├── tests/                      # Test suite (196 tests)
 │   ├── test_scene_plan_generator.py       # Phase 1 happy path tests (41 tests)
 │   ├── test_bridge.py                     # Phase 1.5 bridge tests (25 tests)
 │   ├── test_research_brief_handoff.py     # Phase 2A fixture handoff tests (36 tests)
+│   ├── test_phase2b_integration.py        # Phase 2B integration tests (45 tests)
 │   ├── test_pipeline.py                   # Legacy pipeline tests
 │   ├── test_api.py                        # API endpoint tests
 │   ├── test_api_security.py               # Security tests
@@ -206,7 +335,7 @@ pip install -e .
 ## 🧪 Testing
 
 ```bash
-# Run all tests (151 tests)
+# Run all tests (196 tests)
 pytest tests/ -v
 
 # Run Phase 1 happy path tests only
@@ -217,6 +346,9 @@ pytest tests/test_bridge.py -v
 
 # Run Phase 2A fixture handoff tests only
 pytest tests/test_research_brief_handoff.py -v
+
+# Run Phase 2B integration tests only
+pytest tests/test_phase2b_integration.py -v
 
 # Run legacy pipeline tests
 pytest tests/test_pipeline.py tests/test_api.py -v
@@ -311,6 +443,10 @@ python bridge_cli.py fixtures/research_briefs/jwst_canonical.json --render --val
 | Bridge CLI (structured input path) | ✅ Working | Accepts ResearchBrief or ScenePlan, emits all artifacts |
 | Bridged MediaPackage with render metadata | ✅ Working | Records exactly where rendering was blocked |
 | Fixture-based integration tests | ✅ Working | 36 tests covering handoff, provenance, CLI pipeline |
+| **Handoff package loader** | ✅ Working (Phase 2B) | `research_brief_handoff.py` — file or directory input |
+| **Stable output location** | ✅ Working (Phase 2B) | `outputs/<topic_slug>/` with fixed filenames |
+| **Phase 2B integration tests** | ✅ Working (Phase 2B) | 45 tests covering handoff, stable output, end-to-end |
+| **CLI directory input** | ✅ Working (Phase 2B) | `generate_scene_plan.py <directory> --stable-output` |
 | Full video rendering from ScenePlan | ⚠️ API-gated | Requires `OPENAI_API_KEY` + `STABILITY_API_KEY`; pipeline stops at `content_generator_init` without them |
 | LLM-enhanced scene generation | ⚠️ Future | Could enhance scene narration/visuals via LLM |
 

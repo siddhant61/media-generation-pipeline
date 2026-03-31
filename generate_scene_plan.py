@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 """
-Phase 1 Happy Path: Generate a ScenePlan from a ResearchBrief.
+Phase 1 / Phase 2B Happy Path: Generate a ScenePlan from a ResearchBrief.
 
 Usage:
+    # Direct ResearchBrief file
     python generate_scene_plan.py demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json
+
+    # Handoff directory (auto-detects the ResearchBrief inside)
+    python generate_scene_plan.py demo_data/jwst_star_formation_early_universe_demo/
+
+    # Canonical fixture from content-research-pipeline
+    python generate_scene_plan.py fixtures/research_briefs/jwst_canonical.json
 
 Options:
     --output-dir DIR     Directory for output artifacts (default: generated_artifacts/)
+    --stable-output      Write canonical outputs to outputs/<topic_slug>/ (stable, no timestamps)
     --media-package      Also generate a placeholder MediaPackage
     --validate           Validate all outputs against the shared contract
     --quiet              Suppress progress output
@@ -32,6 +40,10 @@ from run_manifest_writer import (
     save_run_manifest,
     validate_run_manifest,
 )
+from research_brief_handoff import (
+    load_handoff_package,
+    emit_stable_outputs,
+)
 
 
 def _slug_filename(topic: str, artifact_type: str) -> str:
@@ -45,16 +57,21 @@ def _slug_filename(topic: str, artifact_type: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Generate a ScenePlan from a ResearchBrief (Phase 1 happy path)"
+        description="Generate a ScenePlan from a ResearchBrief (Phase 1 / Phase 2B happy path)"
     )
     parser.add_argument(
         "research_brief",
-        help="Path to a ResearchBrief JSON file",
+        help="Path to a ResearchBrief JSON file or a handoff directory containing one",
     )
     parser.add_argument(
         "--output-dir",
         default="generated_artifacts",
         help="Directory for output artifacts (default: generated_artifacts/)",
+    )
+    parser.add_argument(
+        "--stable-output",
+        action="store_true",
+        help="Also write canonical outputs to outputs/<topic_slug>/ with stable file names",
     )
     parser.add_argument(
         "--media-package",
@@ -78,13 +95,16 @@ def main() -> int:
         if not args.quiet:
             print(msg)
 
-    # --- Load ResearchBrief ---
+    # --- Load ResearchBrief (supports file or handoff directory) ---
     log(f"Loading ResearchBrief from: {args.research_brief}")
     try:
-        brief = load_research_brief(args.research_brief)
+        brief, package_meta = load_handoff_package(args.research_brief)
     except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
+
+    if package_meta["sibling_files"]:
+        log(f"Handoff package siblings: {package_meta['sibling_files']}")
 
     topic = brief["topic"]
     log(f"Topic: {topic}")
@@ -107,6 +127,7 @@ def main() -> int:
 
     # --- Optional: MediaPackage ---
     pkg_path = None
+    package = None
     if args.media_package:
         log("Generating placeholder MediaPackage...")
         package = create_media_package(scene_plan, rendered=False)
@@ -123,7 +144,7 @@ def main() -> int:
     manifest = create_run_manifest(
         pipeline_stage="scene_plan_generation",
         status="complete",
-        inputs={"research_brief": args.research_brief},
+        inputs={"research_brief": package_meta["brief_path"]},
         outputs=outputs,
         metrics={
             "num_scenes": len(scene_plan["scenes"]),
@@ -137,6 +158,15 @@ def main() -> int:
     manifest_path = os.path.join(args.output_dir, manifest_filename)
     save_run_manifest(manifest, manifest_path)
     log(f"RunManifest saved to: {manifest_path}")
+
+    # --- Stable canonical outputs ---
+    if args.stable_output:
+        if package is None:
+            package = create_media_package(scene_plan, rendered=False)
+        stable_paths = emit_stable_outputs(scene_plan, package, manifest)
+        log(f"Stable outputs written to: {os.path.dirname(stable_paths['ScenePlan'])}")
+        for artifact_type, path in stable_paths.items():
+            log(f"  {artifact_type}: {path}")
 
     # --- Validation ---
     if args.validate:
@@ -158,7 +188,8 @@ def main() -> int:
             log("RunManifest: VALID ✓")
 
         if args.media_package:
-            pkg = json.load(open(pkg_path))
+            with open(pkg_path) as _f:
+                pkg = json.load(_f)
             pkg_errors = validate_media_package(pkg)
             if pkg_errors:
                 print(f"MediaPackage INVALID: {pkg_errors}", file=sys.stderr)
@@ -170,7 +201,10 @@ def main() -> int:
             return 1
         log("\nAll artifacts valid ✓")
 
-    log("\nPhase 1 happy path complete.")
+    if args.stable_output:
+        log("\nPhase 2B happy path complete.")
+    else:
+        log("\nPhase 1 happy path complete.")
     return 0
 
 
