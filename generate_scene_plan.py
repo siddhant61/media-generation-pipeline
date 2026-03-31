@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
-Phase 1 / Phase 2B / Phase 4 Happy Path: Generate a ScenePlan from a ResearchBrief.
+Generate a ScenePlan from a ResearchBrief.
+
+Supports multiple input modes:
+  - Direct ResearchBrief JSON file
+  - Handoff directory with handoff_manifest.json (auto-detects ResearchBrief)
+  - Downloaded orchestration artifact with explicit upstream provenance
 
 Usage:
     # Handoff directory (auto-detects the ResearchBrief via handoff_manifest.json)
