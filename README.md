@@ -489,7 +489,7 @@ python bridge_cli.py fixtures/research_briefs/jwst_canonical.json --render --val
 | **Phase 2B integration tests** | ✅ Working (Phase 2B) | 52 tests covering handoff, stable output, end-to-end |
 | **CLI directory input** | ✅ Working (Phase 2B) | `generate_scene_plan.py <directory> --stable-output` |
 | **`handoff_manifest.json` consumption** | ✅ Working (Phase 3) | Priority 0 in `find_research_brief_in_dir()`; `package_meta["handoff_manifest"]` populated |
-| **HandoffManifest contract schema** | ✅ Working (Phase 3) | Defined in `contracts/shared_artifacts.json` |
+| **`handoff_manifest.json` descriptor** | ✅ Working (Phase 3) | Operational package descriptor — not a formal shared artifact type |
 | **Phase 3 canonical consumer tests** | ✅ Working (Phase 3) | 34 tests: manifest loading, priority-0 detection, end-to-end, contract |
 | Full video rendering from ScenePlan | ⚠️ API-gated | Requires `OPENAI_API_KEY` + `STABILITY_API_KEY`; pipeline stops at `content_generator_init` without them |
 | LLM-enhanced scene generation | ⚠️ Future | Could enhance scene narration/visuals via LLM |

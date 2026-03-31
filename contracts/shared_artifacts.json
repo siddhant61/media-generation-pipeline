@@ -258,31 +258,6 @@
         "source_scene_id",
         "metadata"
       ]
-    },
-    "HandoffManifest": {
-      "owned_by": [
-        "content-research-pipeline"
-      ],
-      "consumed_by": [
-        "media-generation-pipeline"
-      ],
-      "required_fields": [
-        "schema_version",
-        "handoff_type",
-        "source_pipeline",
-        "source_run_id",
-        "created_at",
-        "topic",
-        "primary_artifact",
-        "artifacts"
-      ],
-      "artifact_items": {
-        "artifacts": [
-          "artifact_type",
-          "filename"
-        ]
-      },
-      "description": "Package index emitted by content-research-pipeline alongside the primary artifact. Declares which file is the primary artifact and lists all artifacts in the handoff package."
     }
   },
   "compatibility_rules": {
