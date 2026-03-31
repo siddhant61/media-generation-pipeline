@@ -2,15 +2,19 @@ name: Manual Generate ScenePlan
 
 on:
   workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   generate-sceneplan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          repository: siddhant61/media-generation-pipeline
 
       - name: Set up Python
         uses: actions/setup-python@v5
