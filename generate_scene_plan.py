@@ -3,11 +3,11 @@
 Phase 1 / Phase 2B Happy Path: Generate a ScenePlan from a ResearchBrief.
 
 Usage:
-    # Direct ResearchBrief file
-    python generate_scene_plan.py demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json
-
-    # Handoff directory (auto-detects the ResearchBrief inside)
+    # Handoff directory (auto-detects the ResearchBrief via handoff_manifest.json)
     python generate_scene_plan.py demo_data/jwst_star_formation_early_universe_demo/
+
+    # Direct ResearchBrief file (real downstream artifact)
+    python generate_scene_plan.py demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.json
 
     # Canonical fixture from content-research-pipeline
     python generate_scene_plan.py fixtures/research_briefs/jwst_canonical.json
@@ -141,10 +141,19 @@ def main() -> int:
     if pkg_path:
         outputs.append(pkg_path)
 
+    # Build inputs dict — include handoff identity when available
+    inputs_dict = {"research_brief": package_meta["brief_path"]}
+    if package_meta.get("handoff_manifest"):
+        hm = package_meta["handoff_manifest"]
+        if hm.get("source_pipeline"):
+            inputs_dict["handoff_source_pipeline"] = hm["source_pipeline"]
+        if hm.get("source_run_id"):
+            inputs_dict["handoff_source_run_id"] = hm["source_run_id"]
+
     manifest = create_run_manifest(
         pipeline_stage="scene_plan_generation",
         status="complete",
-        inputs={"research_brief": package_meta["brief_path"]},
+        inputs=inputs_dict,
         outputs=outputs,
         metrics={
             "num_scenes": len(scene_plan["scenes"]),

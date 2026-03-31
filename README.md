@@ -54,12 +54,12 @@ The primary workflow reads a structured `ResearchBrief` and produces a contract-
 ```bash
 # Generate a ScenePlan from the canonical JWST demo ResearchBrief (file)
 python generate_scene_plan.py \
-  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
+  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.json \
   --validate
 
 # Also generate a placeholder MediaPackage manifest
 python generate_scene_plan.py \
-  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
+  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.json \
   --media-package --validate
 
 # Use a canonical fixture from content-research-pipeline
@@ -236,7 +236,7 @@ The bridge adapter (`bridge_adapter.py`) connects the contract-aligned ScenePlan
 ```bash
 # Dry-run: bridge + validate (no API keys needed)
 python bridge_cli.py \
-  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
+  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.json \
   --dry-run --validate
 
 # Using canonical fixture from content-research-pipeline
@@ -251,7 +251,7 @@ python bridge_cli.py \
 
 # Full render attempt (requires OPENAI_API_KEY + STABILITY_API_KEY)
 python bridge_cli.py \
-  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
+  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.json \
   --render --validate
 ```
 
@@ -297,7 +297,8 @@ All outputs follow the naming convention: `<topic_slug>__<artifact_type>__<times
 
 The `demo_data/jwst_star_formation_early_universe_demo/` directory contains:
 
-- `ResearchBrief.sample.json` — Populated JWST research brief (input)
+- `ResearchBrief.json` — Real downstream JWST research brief from content-research-pipeline (primary input)
+- `ResearchBrief.sample.json` — Legacy sample research brief (kept for backward compatibility)
 - `ScenePlan.sample.json` — Example scene plan (reference output)
 - `RunManifest.sample.json` — Example run manifest
 - `manifest.json` — RawSourceBundle listing NASA/ESA sources
@@ -315,7 +316,8 @@ media-generation-pipeline/
 │       └── jwst_canonical.json # Canonical JWST demo fixture
 ├── demo_data/                  # Canonical demo scaffold (handoff directory example)
 │   └── jwst_star_formation_early_universe_demo/
-│       ├── ResearchBrief.sample.json   # Populated JWST research brief (upstream handoff)
+│       ├── ResearchBrief.json          # Real downstream JWST research brief (primary handoff)
+│       ├── ResearchBrief.sample.json   # Legacy sample research brief
 │       ├── ScenePlan.sample.json       # Reference scene plan
 │       ├── RunManifest.sample.json     # Reference run manifest
 │       └── manifest.json               # RawSourceBundle
@@ -406,7 +408,7 @@ python validate_artifacts.py demo_data/jwst_star_formation_early_universe_demo/S
 
 # Run the full happy path with validation
 python generate_scene_plan.py \
-  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.sample.json \
+  demo_data/jwst_star_formation_early_universe_demo/ResearchBrief.json \
   --media-package --validate
 ```
 
